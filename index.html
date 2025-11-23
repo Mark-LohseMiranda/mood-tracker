@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- desktop favicons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+
+    <!-- Apple touch icon (iPhone / iPad) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Mood Tracker</title>
+    
+    <!-- Usercentrics CMP -->
+    <link rel='preconnect' href='//privacy-proxy.usercentrics.eu'>
+    <link rel='preload' href='//privacy-proxy.usercentrics.eu/latest/uc-block.bundle.js' as='script'>
+    <script type='application/javascript' src='https://privacy-proxy.usercentrics.eu/latest/uc-block.bundle.js'></script>
+    <script id='usercentrics-cmp' src='https://app.usercentrics.eu/browser-ui/latest/loader.js' data-settings-id='6bA7kC_ju5zk2x' async></script>
+    <script>
+      // Wait for UC to be available before setting translations
+      (function checkUC() {
+        if (typeof uc !== 'undefined') {
+          uc.setCustomTranslations('https://termageddon.ams3.cdn.digitaloceanspaces.com/translations/');
+        } else {
+          setTimeout(checkUC, 50);
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

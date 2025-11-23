@@ -1,0 +1,304 @@
+service: mood-tracker-backend
+
+package:
+  individually: true
+  patterns:
+    - '!./**'
+    - 'lib/**'
+
+provider:
+  name: aws
+  runtime: nodejs22.x
+  region: us-west-2
+  stage: ${opt:stage, 'dev'}
+
+  iam:
+    role:
+      statements:
+        - Effect: "Allow"
+          Action:
+            - "dynamodb:Query"
+            - "dynamodb:PutItem"
+            - "dynamodb:UpdateItem"
+          Resource:
+            - "arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/MoodEntries"
+        - Effect: "Allow"
+          Action:
+            - "s3:PutObject"
+            - "s3:PutObjectAcl"
+            - "s3:DeleteObject"
+            - "s3:ListBucket"
+          Resource:
+            - "arn:aws:s3:::mood-tracker-profile-pictures-${self:provider.stage}/*"
+            - "arn:aws:s3:::mood-tracker-profile-pictures-${self:provider.stage}"
+        - Effect: "Allow"
+          Action:
+            - "dynamodb:DeleteItem"
+          Resource:
+            - "arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/MoodEntries"
+        - Effect: "Allow"
+          Action:
+            - "cognito-idp:DeleteUser"
+          Resource:
+            - "*"
+
+  # environment vars still available to lambdas:
+  environment:
+    USER_POOL_ID:   us-west-2_cwI6EVWFw       # your Pool ID
+    APP_CLIENT_ID:  2r595mgikm7jebjbj84r2j5njl            # your App Client ID
+    PROFILE_PICTURES_BUCKET: mood-tracker-profile-pictures-${self:provider.stage}
+    
+functions:
+  createEntry:
+    handler: createEntry.handler
+    package:
+      patterns:
+        - 'createEntry.js'
+    events:
+      - http:
+          path: /entries
+          method: post
+          cors: 
+            origins:
+              - 'https://myemtee.com'
+              - 'https://www.myemtee.com'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+  getTodayEntry:
+    handler: getTodayEntry.handler
+    package:
+      patterns:
+        - 'getTodayEntry.js'
+    events:
+      - http:
+          path: /entries/today
+          method: get
+          cors: 
+            origins:
+              - 'https://myemtee.com'
+              - 'https://www.myemtee.com'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+  
+  getEntriesForMonth:
+    handler: getEntriesForMonth.handler
+    package:
+      patterns:
+        - 'getEntriesForMonth.js'
+    events:
+      - http:
+          path: /entries/history
+          method: get
+          cors: 
+            origins:
+              - 'https://myemtee.com'
+              - 'https://www.myemtee.com'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+  getProfilePictureUploadUrl:
+    handler: getProfilePictureUploadUrl.handler
+    package:
+      patterns:
+        - 'getProfilePictureUploadUrl.js'
+    events:
+      - http:
+          path: /profile/picture-upload-url
+          method: get
+          cors: 
+            origins:
+              - 'https://myemtee.com'
+              - 'https://www.myemtee.com'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+  getEntriesForDay:
+    handler: getEntriesForDay.handler
+    package:
+      patterns:
+        - 'getEntriesForDay.js'
+    events:
+      - http:
+          path: /entries/day
+          method: get
+          cors: 
+            origins:
+              - 'https://myemtee.com'
+              - 'https://www.myemtee.com'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+  deleteProfilePicture:
+    handler: deleteProfilePicture.handler
+    package:
+      patterns:
+        - 'deleteProfilePicture.js'
+    events:
+      - http:
+          path: /profile/picture
+          method: delete
+          cors: 
+            origins:
+              - 'https://myemtee.com'
+              - 'https://www.myemtee.com'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+  deleteAccount:
+    handler: deleteAccount.handler
+    package:
+      patterns:
+        - 'deleteAccount.js'
+    events:
+      - http:
+          path: /account
+          method: post
+          cors: 
+            origins:
+              - 'https://myemtee.com'
+              - 'https://www.myemtee.com'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+
+resources:
+  Resources:
+    MoodEntriesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: MoodEntries
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: timestamp
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+          - AttributeName: timestamp
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+
+    ProfilePicturesBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: mood-tracker-profile-pictures-${self:provider.stage}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins:
+                - 'https://myemtee.com'
+                - 'https://www.myemtee.com'
+              AllowedMethods:
+                - PUT
+                - GET
+                - HEAD
+              AllowedHeaders:
+                - '*'
+              MaxAge: 3000
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: false
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: false
+
+    ProfilePicturesBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket:
+          Ref: ProfilePicturesBucket
+        PolicyDocument:
+          Statement:
+            - Sid: PublicReadGetObject
+              Effect: Allow
+              Principal: '*'
+              Action: 's3:GetObject'
+              Resource: !Sub '${ProfilePicturesBucket.Arn}/*'
+
+    ApiGatewayAuthorizer:
+      Type: AWS::ApiGateway::Authorizer
+      Properties:
+        Name: CognitoAuthorizer
+        Type: COGNITO_USER_POOLS
+        RestApiId:
+          Ref: ApiGatewayRestApi           # this is the implicit REST API Serverless creates
+        IdentitySource: method.request.header.Authorization
+        ProviderARNs:
+          - arn:aws:cognito-idp:us-west-2:111322012873:userpool/us-west-2_cwI6EVWFw
+
+    # Gateway Responses to add CORS headers to error responses
+    GatewayResponseUnauthorized:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        ResponseType: UNAUTHORIZED
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'https://myemtee.com'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+          gatewayresponse.header.Access-Control-Allow-Credentials: "'true'"
+        StatusCode: '401'
+
+    GatewayResponseAccessDenied:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        ResponseType: ACCESS_DENIED
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'https://myemtee.com'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+          gatewayresponse.header.Access-Control-Allow-Credentials: "'true'"
+        StatusCode: '403'
+
+    GatewayResponseExpiredToken:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        ResponseType: EXPIRED_TOKEN
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'https://myemtee.com'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+          gatewayresponse.header.Access-Control-Allow-Credentials: "'true'"
+        StatusCode: '401'

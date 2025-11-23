@@ -1,0 +1,169 @@
+/* ───────────────────────────────────────────────────────────────────────── */
+/*                             GLOBAL STYLES                                 */
+/* ───────────────────────────────────────────────────────────────────────── */
+
+/* Ensure Usercentrics consent banner stays on top */
+#usercentrics-root,
+#usercentrics-root *,
+[id^="usercentrics"],
+[class*="uc-"] {
+  z-index: 999999 !important;
+}
+
+:root {
+  /* Base typography */
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Default (light-mode) colors: */
+  color: #213547;
+  background-color: #ffffff;
+  background-image: url(https://d3fez3f9kccsen.cloudfront.net/default-assets/image/cognito-image-background-page-light.svg);
+
+  /* Make sure the "dark" color-scheme is declared too: */
+  color-scheme: light dark;
+}
+
+/* If you add the `dark` class on <html>, apply these overrides */
+html.dark :root {
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+  background-image: url(https://d3fez3f9kccsen.cloudfront.net/default-assets/image/cognito-image-background-page-dark.svg);
+}
+
+/* Links */
+a {
+  font-weight: 500;
+  color: #646cff; /* blue-ish for light mode */
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+/* Headings */
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+/* Buttons */
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #f9f9f9; /* light fallback */
+  color: #213547; /* ensure text is dark in light mode */
+  cursor: pointer;
+  transition: border-color 0.25s, background-color 0.25s, color 0.25s;
+  box-shadow: 0 0 5px black;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+/* Layout defaults */
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  justify-content: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+/* ───────────────────────────────────────────────────────────────────────── */
+/*                        MEDIA QUERIES (PREFERRED)                          */
+/* ───────────────────────────────────────────────────────────────────────── */
+
+/* Light mode overrides (same as :root defaults) */
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+    background-image: url(https://d3fez3f9kccsen.cloudfront.net/default-assets/image/cognito-image-background-page-light.svg);
+  }
+  a:hover {
+    color: #747bff; /* slightly brighter on hover */
+  }
+  button {
+    background-color: #f9f9f9;
+    color: #213547;
+  }
+}
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: rgba(255, 255, 255, 0.87);
+    background-color: #242424;
+    background-image: url(https://d3fez3f9kccsen.cloudfront.net/default-assets/image/cognito-image-background-page-dark.svg);
+  }
+  a {
+    color: #93a9ff; /* lighter link color in dark mode */
+  }
+  a:hover {
+    color: #c1ccff;
+  }
+  button {
+    background-color: #1a1a1a;
+    color: rgba(255, 255, 255, 0.87);
+    box-shadow: 0 0 5px white;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────────────── */
+/*                      MANUAL TOGGLE FOR OLDER BROWSERS                      */
+/* ───────────────────────────────────────────────────────────────────────── */
+
+/*
+  Some older or niche browsers don’t yet support “prefers-color-scheme”.
+  To force dark mode (or light mode) in those cases, you can add/remove
+  the “dark” class on the <html> element via JavaScript:
+
+    document.documentElement.classList.add('dark');   // force dark mode
+    document.documentElement.classList.remove('dark'); // force light mode
+
+  The “html.dark :root” block above provides the overrides when that class is present.
+*/
+
+/* ───────────────────────────────────────────────────────────────────────── */
+/*                           ADDITIONAL COMPONENT STYLES                       */
+/* (Feel free to add component-specific overrides here)                        */
+/* ───────────────────────────────────────────────────────────────────────── */
+
+/* Example card/panel style (adapts to dark/light) */
+.card {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  color: #213547;
+  padding: 1rem;
+  margin: 1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .card {
+    background-color: #1e1e1e;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    color: rgba(255, 255, 255, 0.87);
+  }
+}
+
+html.dark .card {
+  background-color: #1e1e1e;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.87);
+}

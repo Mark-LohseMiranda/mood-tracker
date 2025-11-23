@@ -1,0 +1,248 @@
+/* Light mode calendar styling */
+.calendar-day {
+  border: 1px solid #eee;
+}
+
+.calendar-day.empty-day {
+  background-color: transparent;
+}
+
+.calendar-day.valid-day {
+  background-color: #f9f9f9;
+  color: #213547;
+}
+
+.calendar-day.has-data {
+  background-color: #e3f2fd;
+  color: #213547;
+  border: 1px solid #646cff;
+  box-shadow: 0 0 5px rgba(100, 108, 255, 0.3);
+}
+
+.calendar-day-number {
+  font-size: 0.75rem;
+  color: inherit;
+}
+
+/* Dark mode calendar styling */
+@media (prefers-color-scheme: dark) {
+  .calendar-day {
+    border: 1px solid #444;
+  }
+  
+  .calendar-day.valid-day {
+    background-color: #2a2a2a;
+    color: rgba(255, 255, 255, 0.87);
+  }
+  
+  .calendar-day.has-data {
+    background-color: #1a1a1a;
+    color: rgba(255, 255, 255, 0.87);
+    border: 1px solid #555;
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+  }
+}
+
+html.dark .calendar-day {
+  border: 1px solid #444;
+}
+
+html.dark .calendar-day.valid-day {
+  background-color: #2a2a2a;
+  color: rgba(255, 255, 255, 0.87);
+}
+
+html.dark .calendar-day.has-data {
+  background-color: #1a1a1a;
+  color: rgba(255, 255, 255, 0.87);
+  border: 1px solid #555;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #213547;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: #666;
+  line-height: 1;
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+}
+
+.modal-close:hover {
+  color: #000;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.day-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.entry-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  background-color: #f9f9f9;
+}
+
+.entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.entry-feeling {
+  font-size: 2rem;
+}
+
+.entry-time {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.entry-notes,
+.entry-consumed,
+.entry-sleep {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #213547;
+}
+
+.entry-notes strong,
+.entry-consumed strong,
+.entry-sleep strong {
+  color: #646cff;
+}
+
+/* Dark mode modal */
+@media (prefers-color-scheme: dark) {
+  .modal-content {
+    background: #1e1e1e;
+    color: rgba(255, 255, 255, 0.87);
+  }
+  
+  .modal-header {
+    border-bottom-color: #444;
+  }
+  
+  .modal-header h3 {
+    color: rgba(255, 255, 255, 0.87);
+  }
+  
+  .modal-close {
+    color: rgba(255, 255, 255, 0.6);
+  }
+  
+  .modal-close:hover {
+    color: rgba(255, 255, 255, 0.87);
+  }
+  
+  .entry-card {
+    background-color: #2a2a2a;
+    border-color: #444;
+  }
+  
+  .entry-time {
+    color: rgba(255, 255, 255, 0.6);
+  }
+  
+  .entry-notes,
+  .entry-consumed,
+  .entry-sleep {
+    color: rgba(255, 255, 255, 0.87);
+  }
+  
+  .entry-notes strong,
+  .entry-consumed strong,
+  .entry-sleep strong {
+    color: #93a9ff;
+  }
+}
+
+html.dark .modal-content {
+  background: #1e1e1e;
+  color: rgba(255, 255, 255, 0.87);
+}
+
+html.dark .modal-header {
+  border-bottom-color: #444;
+}
+
+html.dark .modal-header h3 {
+  color: rgba(255, 255, 255, 0.87);
+}
+
+html.dark .modal-close {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+html.dark .modal-close:hover {
+  color: rgba(255, 255, 255, 0.87);
+}
+
+html.dark .entry-card {
+  background-color: #2a2a2a;
+  border-color: #444;
+}
+
+html.dark .entry-time {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+html.dark .entry-notes,
+html.dark .entry-consumed,
+html.dark .entry-sleep {
+  color: rgba(255, 255, 255, 0.87);
+}
+
+html.dark .entry-notes strong,
+html.dark .entry-consumed strong,
+html.dark .entry-sleep strong {
+  color: #93a9ff;
+}
