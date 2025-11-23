@@ -29,9 +29,7 @@
 **My Mood Tracker** is a modern, serverless Progressive Web App that helps users track their daily moods, sleep patterns, consumption habits, and overall wellness over time. Built with privacy and security in mind, the app leverages AWS cloud services for a scalable, cost-effective, and highly available solution.
 
 ### 🌟 Live Demo
-- **Production**: [https://yourdomain.com](https://yourdomain.com)
-- **WWW Alias**: [https://www.yourdomain.com](https://www.yourdomain.com)
-- **Auth Domain**: [https://auth.yourdomain.com](https://auth.yourdomain.com)
+- **Production**: [https://myemtee.com](https://myemtee.com)
 
 ---
 
