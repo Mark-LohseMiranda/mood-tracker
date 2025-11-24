@@ -47,38 +47,39 @@ async function getEntriesForMonth(event) {
     }
   }));
 
-  // Group by day (YYYY-MM-DD) and compute average
+  // Group by day (YYYY-MM-DD) and collect feelings (encrypted or not)
   const byDay = {};
   (resp.Items || []).forEach(item => {
-    const ts = item.timestamp.S;        // e.g. "2025-05-14T08:23:45.123Z"
-    const day = ts.slice(0, 10);        // "2025-05-14"
+    // Use localDate if available (new entries), fallback to timestamp extraction (old entries)
+    let day;
+    if (item.localDate && item.localDate.S) {
+      day = item.localDate.S; // e.g. "2025-05-14"
+    } else {
+      const ts = item.timestamp.S;        // e.g. "2025-05-14T08:23:45.123Z"
+      day = ts.slice(0, 10);              // "2025-05-14" (fallback for old entries)
+    }
     
-    // Handle both encrypted (string) and unencrypted (number) feeling
-    // For encrypted data, we can't compute average on server side
-    // So we'll skip encrypted entries in the calendar view
-    // Or return a placeholder value
-    let val;
+    // Store the feeling value (encrypted string or unencrypted number)
+    let feelingValue;
     if (item.feeling.N) {
-      // Unencrypted number
-      val = Number(item.feeling.N);
+      feelingValue = item.feeling.N; // Unencrypted number as string
     } else if (item.feeling.S) {
-      // Encrypted - use middle value (3) as placeholder for calendar coloring
-      val = 3;
+      feelingValue = item.feeling.S; // Encrypted string
     } else {
       return; // Skip invalid entries
     }
 
     if (!byDay[day]) {
-      byDay[day] = { sum: 0, count: 0 };
+      byDay[day] = [];
     }
-    byDay[day].sum += val;
-    byDay[day].count += 1;
+    byDay[day].push(feelingValue);
   });
 
-  // Build array of { date, avgFeeling }
-  const results = Object.entries(byDay).map(([date, { sum, count }]) => ({
+  // Build array of { date, feelings: [...] }
+  // Frontend will decrypt and calculate average
+  const results = Object.entries(byDay).map(([date, feelings]) => ({
     date,
-    avgFeeling: Math.round(sum / count) // round to nearest integer 1–5
+    feelings // Array of encrypted or unencrypted feeling values
   }));
 
   return {

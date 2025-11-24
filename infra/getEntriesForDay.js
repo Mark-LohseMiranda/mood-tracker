@@ -31,22 +31,46 @@ async function getEntriesForDay(event) {
     };
   }
 
-  // Query DynamoDB for all entries on this day
+  // Query all entries for the user (we need to scan because localDate is not part of the key)
+  // For performance, we query a date range that covers potential timezone differences
+  const prevDay = new Date(date);
+  prevDay.setDate(prevDay.getDate() - 1);
+  const nextDay = new Date(date);
+  nextDay.setDate(nextDay.getDate() + 1);
+  
+  const prevDayStr = prevDay.toISOString().slice(0, 10);
+  const nextDayStr = nextDay.toISOString().slice(0, 10);
+  
+  // Query for timestamps that might correspond to this local date
+  // (previous day, current day, or next day in UTC)
   const resp = await db.send(new QueryCommand({
     TableName: 'MoodEntries',
-    KeyConditionExpression: 'userId = :u AND begins_with(#ts, :d)',
+    KeyConditionExpression: 'userId = :u AND #ts BETWEEN :start AND :end',
     ExpressionAttributeNames: {
       '#ts': 'timestamp'
     },
     ExpressionAttributeValues: {
       ':u': { S: userId },
-      ':d': { S: date }
+      ':start': { S: prevDayStr },
+      ':end': { S: nextDayStr + 'T23:59:59.999Z' }
     }
   }));
 
+  // Filter entries to match the requested localDate
+  const filteredItems = (resp.Items || []).filter(item => {
+    if (item.localDate && item.localDate.S) {
+      // Use localDate if available (new entries)
+      return item.localDate.S === date;
+    } else {
+      // Fallback for old entries without localDate
+      return item.timestamp.S.startsWith(date);
+    }
+  });
+
   // Format entries
-  const entries = (resp.Items || []).map(item => ({
+  const entries = filteredItems.map(item => ({
     timestamp: item.timestamp.S,
+    localDate: item.localDate?.S || item.timestamp.S.slice(0, 10),
     // Handle both encrypted (string) and unencrypted (number) feeling
     feeling: item.feeling.S || String(item.feeling.N),
     notes: item.notes?.S || '',

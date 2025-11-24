@@ -93,13 +93,15 @@ export default function DailyQuestions() {
       return alert("Please sign in to save.");
     }
 
+    const now = new Date();
     const entry = {
       feeling,
       sleepQuality,
       sleepDuration,
       consumed,
       notes,
-      timestamp: new Date().toISOString(),
+      timestamp: now.toISOString(),
+      localDate: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`, // YYYY-MM-DD in user's timezone
     };
 
     // Encrypt sensitive fields before sending to backend

@@ -144,7 +144,13 @@ async function decryptString(encryptedData, key) {
 export async function encryptEntry(entry, userSub) {
   const key = await deriveKeyFromUserSub(userSub);
   
-  const encrypted = { ...entry };
+  // Start with non-sensitive fields that should NOT be encrypted
+  const encrypted = {
+    timestamp: entry.timestamp,
+    localDate: entry.localDate,
+    sleepQuality: entry.sleepQuality,
+    sleepDuration: entry.sleepDuration,
+  };
   
   // Encrypt notes
   if (entry.notes) {
@@ -204,6 +210,18 @@ export async function decryptEntry(entry, userSub) {
   }
 
   return decrypted;
+}
+
+/**
+ * Decrypts a single feeling value (for calendar average calculation).
+ * 
+ * @param {string} encryptedFeeling - The encrypted feeling string
+ * @param {string} userSub - The Cognito user's "sub" claim
+ * @returns {Promise<string>} Decrypted feeling value
+ */
+export async function decryptFeeling(encryptedFeeling, userSub) {
+  const key = await deriveKeyFromUserSub(userSub);
+  return await decryptString(encryptedFeeling, key);
 }
 
 /**

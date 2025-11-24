@@ -45,7 +45,8 @@
 ### 📅 Calendar & History
 - **Visual Calendar**: Month view with color-coded mood indicators (average daily mood)
 - **Day Details**: Click any calendar day to see all entries with timestamps
-- **Timezone Support**: Entries display in your local timezone
+- **Timezone-Aware Grouping**: Entries are grouped by your local date, not UTC - no more late-night entries appearing on the wrong day
+- **Client-Side Decryption**: Calendar averages calculated in your browser after decrypting your entries
 - **Trend Analysis**: Observe patterns over time with visual mood averages
 
 ### 👤 Account Management
@@ -148,10 +149,11 @@
 │                 │  │                  │  │                │
 │ • userId (PK)   │  │ • Public Read    │  │ • GetUser      │
 │ • timestamp(SK) │  │ • User Prefix    │  │ • DeleteUser   │
-│ • feeling       │  │ • Presigned URLs │  │ • Update Attrs │
+│ • localDate     │  │ • Presigned URLs │  │ • Update Attrs │
+│ • feeling (enc) │  │                  │  │                │
 │ • sleep data    │  │                  │  │                │
-│ • consumed      │  │                  │  │                │
-│ • notes         │  │                  │  │                │
+│ • consumed(enc) │  │                  │  │                │
+│ • notes (enc)   │  │                  │  │                │
 └─────────────────┘  └──────────────────┘  └────────────────┘
 ```
 
@@ -242,10 +244,10 @@ mood-tracker/
 │
 ├── 📂 infra/                        # Backend infrastructure
 │   ├── 📄 serverless.yml            # AWS resource definitions
-│   ├── 📄 createEntry.js            # POST /entries
+│   ├── 📄 createEntry.js            # POST /entries (saves localDate)
 │   ├── 📄 getTodayEntry.js          # GET /entries/today
-│   ├── 📄 getEntriesForMonth.js     # GET /entries/history
-│   ├── 📄 getEntriesForDay.js       # GET /entries/day?date=YYYY-MM-DD
+│   ├── 📄 getEntriesForMonth.js     # GET /entries/history (returns encrypted feelings)
+│   ├── 📄 getEntriesForDay.js       # GET /entries/day?date=YYYY-MM-DD (filters by localDate)
 │   ├── 📄 getProfilePictureUploadUrl.js  # GET /profile/picture-upload-url
 │   ├── 📄 deleteProfilePicture.js   # DELETE /profile/picture
 │   ├── 📄 deleteAccount.js          # POST /account
@@ -413,10 +415,16 @@ Response: Entry object or 404
 
 **Get Month History**
 ```http
-GET /entries/history?month=2025-11
+GET /entries/history?year=2025&month=11
 Authorization: Bearer <token>
 
-Response: Array of daily averages
+Response: [
+  {
+    "date": "2025-11-23",
+    "feelings": ["encryptedValue1", "encryptedValue2", ...]
+  }
+]
+Note: Frontend decrypts feelings and calculates averages client-side
 ```
 
 **Get Day Entries**
@@ -506,7 +514,7 @@ Response: { message: "Account data deleted successfully" }
 - ✅ **Notes**: Your personal reflections and thoughts
 - ✅ **Feelings**: Your mood emoji selections
 - ✅ **Consumption Data**: What you've consumed (caffeine, prescriptions, etc.)
-- ⚠️ **Not Encrypted**: Sleep quality, sleep duration, timestamps (needed for calendar functionality)
+- ⚠️ **Not Encrypted**: Sleep quality, sleep duration, timestamps, localDate (needed for calendar functionality and timezone-aware grouping)
 
 #### Technical Details
 

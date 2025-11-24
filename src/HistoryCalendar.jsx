@@ -110,9 +110,37 @@ useEffect(() => {
       if (resp.ok) {
         const data = await resp.json();
         const monthMap = {};
-        data.forEach(({ date, avgFeeling }) => {
-          monthMap[date] = avgFeeling;
-        });
+        
+        // Decrypt feelings and calculate averages
+        const userSub = auth.user?.profile?.sub;
+        const { decryptFeeling } = await import('./lib/encryption.js');
+        
+        for (const { date, feelings } of data) {
+          if (!feelings || feelings.length === 0) continue;
+          
+          // Decrypt each feeling
+          const decryptedFeelings = [];
+          for (const feeling of feelings) {
+            // If it's a number (unencrypted), use it directly
+            if (!isNaN(feeling)) {
+              decryptedFeelings.push(Number(feeling));
+            } else {
+              // It's encrypted, decrypt it
+              const decrypted = await decryptFeeling(feeling, userSub);
+              const value = parseInt(decrypted, 10);
+              if (!isNaN(value)) {
+                decryptedFeelings.push(value);
+              }
+            }
+          }
+          
+          // Calculate average
+          if (decryptedFeelings.length > 0) {
+            const avg = decryptedFeelings.reduce((a, b) => a + b, 0) / decryptedFeelings.length;
+            monthMap[date] = Math.round(avg);
+          }
+        }
+        
         exists = Object.keys(monthMap).length > 0;
 
         setAverages(monthMap);

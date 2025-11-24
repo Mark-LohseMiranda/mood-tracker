@@ -55,6 +55,11 @@ async function createEntry(event) {
     notes:     { S: data.notes || '' }
   };
   
+  // Add localDate if provided (for timezone-aware grouping)
+  if (data.localDate) {
+    item.localDate = { S: data.localDate };
+  }
+  
   // Handle consumed - can be encrypted string or object
   if (typeof data.consumed === 'string') {
     // Encrypted data
