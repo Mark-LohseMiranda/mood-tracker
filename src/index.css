@@ -10,6 +10,17 @@
   z-index: 999999 !important;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 :root {
   /* Base typography */
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;

@@ -71,12 +71,14 @@
 
 ### 🎨 User Experience
 - **Dark Mode**: Automatic detection with manual toggle support
-- **Responsive Design**: Mobile-first, works on all devices
+- **Responsive Design**: Mobile-first, works on all devices with proper viewport handling
 - **PWA Support**: Install as native app, offline-ready
 - **Unsaved Changes Protection**: Navigation warnings prevent data loss
 - **Loading States**: Clear feedback during async operations
 - **Error Handling**: User-friendly error messages
 - **In-App Instructions**: Comprehensive help page with screenshots for new users
+- **Animated Navigation**: Smooth hamburger-to-X menu animation
+- **Session Persistence**: 30-day refresh token for extended login sessions
 
 ---
 
@@ -217,20 +219,25 @@ mood-tracker/
 ├── 📂 src/                          # Frontend source code
 │   ├── 📄 main.jsx                  # App entry point, OIDC setup
 │   ├── 📄 App.jsx                   # Main app component, routing
-│   ├── 📄 Header.jsx                # Navigation header with profile
+│   ├── 📄 App.css                   # Global styles, hamburger menu animation
+│   ├── 📄 Header.jsx                # Navigation header with animated menu
 │   ├── 📄 Footer.jsx                # Footer with policy links
 │   ├── 📄 DailyQuestions.jsx        # Mood entry form
+│   ├── 📄 DailyQuestions.css        # Sleep section responsive styles
 │   ├── 📄 HistoryCalendar.jsx       # Calendar view with modal
+│   ├── 📄 HistoryCalendar.css       # Calendar styles
 │   ├── 📄 AccountSettings.jsx       # Profile/password/MFA/delete
+│   ├── 📄 AccountSettings.css       # Settings page styles
 │   ├── 📄 Instructions.jsx          # In-app help page with screenshots
+│   ├── 📄 Instructions.css          # Instructions page styles
 │   ├── 📄 PrivacyPolicy.jsx         # Privacy policy embed
 │   ├── 📄 TermsOfService.jsx        # Terms of service embed
 │   ├── 📄 Disclaimer.jsx            # Disclaimer embed
 │   ├── 📄 CookiePolicy.jsx          # Cookie policy embed
 │   ├── 📄 FeelingSelector.jsx       # Emoji mood selector
+│   ├── 📄 index.css                 # Base styles, responsive layout fixes
 │   ├── 📂 lib/                      # Utility libraries
 │   │   └── 📄 encryption.js         # Client-side AES-256-GCM encryption
-│   ├── 📄 *.css                     # Component styles
 │   └── 📂 assets/                   # Static assets
 │
 ├── 📂 infra/                        # Backend infrastructure

@@ -25,7 +25,7 @@ export default function Header() {
   };
 
   return (
-    <header style={{ padding: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <header style={{ padding: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
       <Link to="/" style={{ lineHeight: 0 }}>
         <img
           src="/logo-min.webp"
@@ -39,7 +39,7 @@ export default function Header() {
           }}
         />
       </Link>
-      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "1rem", position: "relative" }}>
         {auth.user?.profile.picture ? (
           <img
             src={auth.user.profile.picture}
@@ -64,28 +64,30 @@ export default function Header() {
         </span>
         <button 
           onClick={() => setMenuOpen(!menuOpen)}
-          className="hamburger-menu"
+          className={`hamburger-menu ${menuOpen ? 'open' : ''}`}
           aria-label="Menu"
         >
-          ☰
+          <span></span>
+          <span></span>
+          <span></span>
         </button>
+        {menuOpen && (
+          <div className="dropdown-menu">
+            <Link to="/" onClick={() => setMenuOpen(false)}>
+              Home
+            </Link>
+            <Link to="/instructions" onClick={() => setMenuOpen(false)}>
+              Instructions
+            </Link>
+            <Link to="/settings" onClick={() => setMenuOpen(false)}>
+              Settings
+            </Link>
+            <Link to="#" onClick={(e) => { e.preventDefault(); setMenuOpen(false); signOutRedirect(); }}>
+              Sign out
+            </Link>
+          </div>
+        )}
       </div>
-      {menuOpen && (
-        <div className="dropdown-menu">
-          <Link to="/" onClick={() => setMenuOpen(false)}>
-            Home
-          </Link>
-          <Link to="/instructions" onClick={() => setMenuOpen(false)}>
-            Instructions
-          </Link>
-          <Link to="/settings" onClick={() => setMenuOpen(false)}>
-            Settings
-          </Link>
-          <Link to="#" onClick={(e) => { e.preventDefault(); setMenuOpen(false); signOutRedirect(); }}>
-            Sign out
-          </Link>
-        </div>
-      )}
     </header>
   );
 }

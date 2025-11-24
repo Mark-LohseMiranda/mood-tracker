@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
 import { encryptEntry, decryptEntry } from "./lib/encryption";
+import "./DailyQuestions.css";
 
 export default function DailyQuestions() {
   const navigate = useNavigate();
@@ -153,37 +154,24 @@ export default function DailyQuestions() {
   const alreadySlept = sleepQuality != null;
 
   return (
-    <div style={{ padding: "1rem", maxWidth: 500, margin: "0 auto" }}>
+    <div className="daily-questions-container">
       <h1 style={{ textAlign: "center" }}>
         You're feeling {FEELING_MAP[feeling]}
       </h1>
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: "1.5rem" }}>
+      <form onSubmit={handleSubmit} className="daily-questions-form">
         {entryLoaded && !entryExists && (
           <>
             {/* Sleep Quality Row */}
-            <fieldset style={{ border: "none", padding: 0 }}>
-              <legend>Sleep Quality</legend>
-              <div
-                style={{
-                  display: "grid",
-                  justifyContent: "center",
-                  gridTemplateColumns: "repeat(2, 1fr)",
-                  gap: "1rem",
-                  justifyItems: "center",
-                }}
-              >
+            <fieldset className="sleep-fieldset">
+              <legend className="sleep-legend">Sleep Quality</legend>
+              <div className="sleep-quality-grid">
                 {sleepQualityOptions.map((opt) => (
                   <button
                     type="button"
                     key={opt.value}
                     onClick={() => setSleepQuality(opt.value)}
                     aria-label={opt.label}
-                    style={{
-                      border:
-                        sleepQuality === opt.value
-                          ? "2px solid #0070f3"
-                          : "1px solid #ccc"
-                    }}
+                    className={`sleep-quality-button ${sleepQuality === opt.value ? 'selected' : ''}`}
                   >
                     {opt.emoji}
                   </button>
@@ -192,20 +180,15 @@ export default function DailyQuestions() {
             </fieldset>
 
             {/* Sleep Duration Row */}
-            <fieldset style={{ border: "none", padding: 0 }}>
-              <legend>Hours Slept</legend>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <fieldset className="sleep-fieldset">
+              <legend className="sleep-legend">Hours Slept</legend>
+              <div className="sleep-duration-grid">
                 {sleepDurationOptions.map((opt) => (
                   <button
                     type="button"
                     key={opt.value}
                     onClick={() => setSleepDuration(opt.value)}
-                    style={{
-                      border:
-                        sleepDuration === opt.value
-                          ? "2px solid #0070f3"
-                          : "1px solid #ccc"
-                    }}
+                    className={`sleep-duration-button ${sleepDuration === opt.value ? 'selected' : ''}`}
                   >
                     {opt.label}
                   </button>

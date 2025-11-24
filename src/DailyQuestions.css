@@ -1,0 +1,146 @@
+.daily-questions-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 1rem;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.daily-questions-form {
+  display: grid;
+  gap: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Sleep Quality Section */
+.sleep-fieldset {
+  border: none;
+  padding: 0;
+}
+
+.sleep-legend {
+  text-align: center;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.sleep-quality-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+  gap: 0.5rem;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+@media (min-width: 480px) {
+  .sleep-quality-grid {
+    max-width: 400px;
+    gap: 1rem;
+  }
+}
+
+.sleep-quality-button {
+  border: 1px solid #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  min-height: 60px;
+  background: var(--button-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.sleep-quality-button:hover {
+  background: var(--button-hover-bg);
+  transform: translateY(-2px);
+}
+
+.sleep-quality-button.selected {
+  border: 2px solid #0070f3;
+  background: rgba(0, 112, 243, 0.1);
+}
+
+/* Sleep Duration Section */
+.sleep-duration-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  gap: 0.5rem;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+@media (min-width: 480px) {
+  .sleep-duration-grid {
+    max-width: 600px;
+    gap: 0.75rem;
+  }
+}
+
+.sleep-duration-button {
+  border: 1px solid #ccc;
+  padding: 0.75rem 0.25rem;
+  white-space: nowrap;
+  background: var(--button-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  font-size: 0.9rem;
+}
+
+@media (min-width: 480px) {
+  .sleep-duration-button {
+    padding: 0.75rem 0.5rem;
+    font-size: 1rem;
+  }
+}
+
+.sleep-duration-button:hover {
+  background: var(--button-hover-bg);
+  transform: translateY(-2px);
+}
+
+.sleep-duration-button.selected {
+  border: 2px solid #0070f3;
+  background: rgba(0, 112, 243, 0.1);
+}
+
+/* Consumption Section */
+.consumption-fieldset {
+  border: 1px solid #ccc;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.consumption-label {
+  display: block;
+  margin-top: 0.5rem;
+}
+
+/* Notes Section */
+.notes-label {
+  display: block;
+}
+
+.notes-textarea {
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-family: inherit;
+  resize: vertical;
+  background: var(--input-bg);
+  color: var(--text-primary);
+}
+
+.notes-textarea:focus {
+  outline: none;
+  border-color: #0070f3;
+}
