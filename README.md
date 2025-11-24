@@ -76,6 +76,7 @@
 - **Unsaved Changes Protection**: Navigation warnings prevent data loss
 - **Loading States**: Clear feedback during async operations
 - **Error Handling**: User-friendly error messages
+- **In-App Instructions**: Comprehensive help page with screenshots for new users
 
 ---
 
@@ -91,7 +92,7 @@
 │  └──────────────┘  └──────────────┘  └──────────────┘               │
 │                                                                     │
 │  Components: Header, Footer, DailyQuestions, HistoryCalendar,       │
-│             AccountSettings, Policy Pages                           │
+│             AccountSettings, Instructions, Policy Pages             │
 └─────────────────────────────────────────────────────────────────────┘
                                 │
                                 │ HTTPS
@@ -221,6 +222,7 @@ mood-tracker/
 │   ├── 📄 DailyQuestions.jsx        # Mood entry form
 │   ├── 📄 HistoryCalendar.jsx       # Calendar view with modal
 │   ├── 📄 AccountSettings.jsx       # Profile/password/MFA/delete
+│   ├── 📄 Instructions.jsx          # In-app help page with screenshots
 │   ├── 📄 PrivacyPolicy.jsx         # Privacy policy embed
 │   ├── 📄 TermsOfService.jsx        # Terms of service embed
 │   ├── 📄 Disclaimer.jsx            # Disclaimer embed
@@ -247,7 +249,15 @@ mood-tracker/
 ├── 📂 public/                       # Public assets
 │   ├── 📄 favicon.ico
 │   ├── 📄 apple-touch-icon.png
-│   └── 📄 manifest.json             # PWA manifest
+│   ├── 📄 manifest.json             # PWA manifest
+│   └── 📂 screenshots/              # Instruction page screenshots
+│       ├── 📄 mood-selector.webp
+│       ├── 📄 sleep-tracking.webp
+│       ├── 📄 consumption-logging.webp
+│       ├── 📄 notes-section.webp
+│       ├── 📄 calendar-view.webp
+│       ├── 📄 calendar-day-detail.webp
+│       └── 📄 account-settings.webp
 │
 ├── 📂 dev-dist/                     # Service worker files
 │   ├── 📄 registerSW.js

@@ -9,6 +9,7 @@ import PrivacyPolicy from "./PrivacyPolicy";
 import TermsOfService from "./TermsOfService";
 import Disclaimer from "./Disclaimer";
 import CookiePolicy from "./CookiePolicy";
+import Instructions from "./Instructions";
 import Header from "./Header";
 import Footer from "./Footer";
 import "./App.css"; 
@@ -78,6 +79,7 @@ function App() {
         />
         <Route path="/questions" element={<DailyQuestions />} />
         <Route path="/settings" element={<AccountSettings />} />
+        <Route path="/instructions" element={<Instructions />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route path="/disclaimer" element={<Disclaimer />} />

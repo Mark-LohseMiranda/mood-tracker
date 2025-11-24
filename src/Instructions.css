@@ -1,0 +1,177 @@
+.instructions-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  line-height: 1.6;
+}
+
+.instructions-container h1 {
+  color: var(--text-primary);
+  margin-bottom: 2rem;
+  text-align: center;
+  font-size: 2rem;
+}
+
+.instruction-section {
+  margin-bottom: 3rem;
+  background: var(--card-bg);
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.instruction-section h2 {
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  border-bottom: 2px solid var(--primary-color);
+  padding-bottom: 0.5rem;
+}
+
+.instruction-step {
+  margin: 1.5rem 0;
+}
+
+.instruction-step h3 {
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+  font-size: 1.2rem;
+}
+
+.instruction-step p {
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.instruction-section ul {
+  margin: 0.5rem 0 0.5rem 1.5rem;
+  color: var(--text-secondary);
+}
+
+.instruction-section li {
+  margin: 0.5rem 0;
+}
+
+.privacy-note {
+  background: var(--success-bg);
+  color: var(--success-text);
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+  font-weight: 500;
+}
+
+.color-legend {
+  list-style: none;
+  margin-left: 0 !important;
+}
+
+.color-legend li {
+  display: flex;
+  align-items: center;
+  margin: 0.75rem 0;
+}
+
+.color-box {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  margin-right: 1rem;
+  border-radius: 6px;
+  border: 2px solid var(--border-color);
+}
+
+.color-box.very-bad {
+  background-color: #ef4444;
+}
+
+.color-box.bad {
+  background-color: #f97316;
+}
+
+.color-box.neutral {
+  background-color: #eab308;
+}
+
+.color-box.good {
+  background-color: #84cc16;
+}
+
+.color-box.very-good {
+  background-color: #22c55e;
+}
+
+.faq {
+  margin-top: 1rem;
+}
+
+.faq-item {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: var(--bg-primary);
+  border-radius: 8px;
+  border-left: 4px solid var(--primary-color);
+}
+
+.faq-item h3 {
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.faq-item p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.instructions-container a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.instructions-container a:hover {
+  text-decoration: underline;
+}
+
+.screenshot {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  margin: 1rem 0;
+  border-radius: 8px;
+  border: 2px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode support */
+[data-theme="dark"] .instruction-section {
+  background: var(--card-bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .faq-item {
+  background: var(--bg-secondary);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .instructions-container {
+    padding: 1rem;
+  }
+
+  .instructions-container h1 {
+    font-size: 1.5rem;
+  }
+
+  .instruction-section {
+    padding: 1.5rem;
+  }
+
+  .instruction-section h2 {
+    font-size: 1.3rem;
+  }
+
+  .instruction-step h3 {
+    font-size: 1.1rem;
+  }
+}
