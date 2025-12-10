@@ -12,6 +12,7 @@ const cognitoAuthConfig = {
   post_logout_redirect_uri: import.meta.env.VITE_COGNITO_LOGOUT_URI,
   response_type: "code",
   scope: "openid email profile aws.cognito.signin.user.admin",
+  automaticSilentRenew: true, // Auto-refresh tokens using refresh token
   metadata: {
     issuer: import.meta.env.VITE_COGNITO_AUTHORITY,
     authorization_endpoint: `${import.meta.env.VITE_COGNITO_DOMAIN}/oauth2/authorize`,
