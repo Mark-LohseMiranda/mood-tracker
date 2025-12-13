@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import './AccountSettings.css';
 
 function AccountSettings() {
-  const { user, getIdToken, getAccessToken } = useAuthContext();
+  const { user, getIdToken, getAccessToken, refreshUserInfo } = useAuthContext();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(false);
@@ -266,7 +266,8 @@ function AccountSettings() {
       setOriginalProfile({ ...profileForm });
       setHasUnsavedChanges(false);
       setUnsavedUploadedPicture(null);
-      // User info will be refreshed on next getCurrentUser call
+      // Refresh user info in AuthContext to update header
+      await refreshUserInfo();
     } catch (error) {
       showMessage('error', error.message || 'Failed to update profile');
     } finally {
@@ -422,12 +423,12 @@ function AccountSettings() {
         ]
       });
 
-      // User info will be refreshed on next getCurrentUser call
-
       // Clear picture from form and original profile
       setProfileForm({ ...profileForm, picture: '' });
       setOriginalProfile({ ...originalProfile, picture: '' });
       setUnsavedUploadedPicture(null);
+      // Refresh user info in AuthContext to update header
+      await refreshUserInfo();
       showMessage('success', 'Profile picture deleted successfully');
     } catch (error) {
       showMessage('error', error.message || 'Failed to delete picture');
@@ -588,6 +589,9 @@ function AccountSettings() {
                   disabled={uploadingPicture}
                   style={{ marginTop: '1rem' }}
                 />
+                <small style={{ display: 'block', marginTop: '0.5rem', color: '#666' }}>
+                  Max 5MB, image files only
+                </small>
                 {uploadingPicture && <p>Uploading...</p>}
               </div>
               <button 

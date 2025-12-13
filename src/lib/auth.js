@@ -25,6 +25,70 @@ const ID_TOKEN_KEY = 'cognito_id_token';
 const REFRESH_TOKEN_KEY = 'cognito_refresh_token';
 const USER_INFO_KEY = 'cognito_user_info';
 
+// IndexedDB setup for persistent storage in PWAs
+const DB_NAME = 'MoodTrackerAuth';
+const DB_VERSION = 1;
+const STORE_NAME = 'tokens';
+
+let db;
+
+async function initDB() {
+  if (db) return db;
+  
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      db = request.result;
+      resolve(db);
+    };
+    
+    request.onupgradeneeded = (event) => {
+      const database = event.target.result;
+      if (!database.objectStoreNames.contains(STORE_NAME)) {
+        database.createObjectStore(STORE_NAME);
+      }
+    };
+  });
+}
+
+async function setItem(key, value) {
+  const database = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction([STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.put(value, key);
+    
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getItem(key) {
+  const database = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction([STORE_NAME], 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.get(key);
+    
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function removeItem(key) {
+  const database = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction([STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.delete(key);
+    
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
 /**
  * Sign in with username and password
  */
@@ -76,13 +140,16 @@ export async function signIn(username, password) {
  */
 export async function verifyMFA(session, mfaCode) {
   try {
+    // Get from localStorage since we stored it there during login
+    const tempUsername = localStorage.getItem('temp_username');
+    
     const command = new RespondToAuthChallengeCommand({
       ClientId: CLIENT_ID,
       ChallengeName: 'SOFTWARE_TOKEN_MFA',
       Session: session,
       ChallengeResponses: {
         SOFTWARE_TOKEN_MFA_CODE: mfaCode,
-        USERNAME: localStorage.getItem('temp_username'), // Store temporarily during login
+        USERNAME: tempUsername,
       },
     });
 
@@ -194,7 +261,7 @@ export async function confirmForgotPassword(username, code, newPassword) {
  */
 export async function refreshSession() {
   try {
-    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    const refreshToken = await getItem(REFRESH_TOKEN_KEY);
     if (!refreshToken) {
       throw new Error('No refresh token available');
     }
@@ -228,7 +295,7 @@ export async function refreshSession() {
  */
 export async function signOut() {
   try {
-    const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+    const accessToken = await getItem(ACCESS_TOKEN_KEY);
     
     if (accessToken) {
       const command = new GlobalSignOutCommand({
@@ -239,11 +306,13 @@ export async function signOut() {
   } catch (error) {
     console.error('Sign out error:', error);
   } finally {
-    // Clear local storage regardless of API call success
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(ID_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem(USER_INFO_KEY);
+    // Clear storage regardless of API call success
+    await removeItem(ACCESS_TOKEN_KEY);
+    await removeItem(ID_TOKEN_KEY);
+    await removeItem(REFRESH_TOKEN_KEY);
+    await removeItem(USER_INFO_KEY);
+    
+    // Keep localStorage for non-auth data
     localStorage.removeItem('historyCache');
   }
 }
@@ -253,7 +322,7 @@ export async function signOut() {
  */
 export async function getCurrentUser() {
   try {
-    const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+    const accessToken = await getItem(ACCESS_TOKEN_KEY);
     if (!accessToken) {
       return null;
     }
@@ -266,7 +335,7 @@ export async function getCurrentUser() {
       return getCurrentUser(); // Retry with new token
     }
 
-    const userInfo = localStorage.getItem(USER_INFO_KEY);
+    const userInfo = await getItem(USER_INFO_KEY);
     return userInfo ? JSON.parse(userInfo) : null;
   } catch (error) {
     console.error('Get current user error:', error);
@@ -277,8 +346,8 @@ export async function getCurrentUser() {
 /**
  * Check if user is authenticated
  */
-export function isAuthenticated() {
-  const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+export async function isAuthenticated() {
+  const accessToken = await getItem(ACCESS_TOKEN_KEY);
   if (!accessToken) return false;
 
   const tokenPayload = parseJwt(accessToken);
@@ -288,28 +357,46 @@ export function isAuthenticated() {
 /**
  * Get access token (for API calls)
  */
-export function getAccessToken() {
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+export async function getAccessToken() {
+  return await getItem(ACCESS_TOKEN_KEY);
 }
 
 /**
  * Get ID token (contains user claims)
  */
-export function getIdToken() {
-  return localStorage.getItem(ID_TOKEN_KEY);
+export async function getIdToken() {
+  return await getItem(ID_TOKEN_KEY);
+}
+
+/**
+ * Refresh user info from Cognito (force cache update)
+ */
+export async function refreshUserInfo() {
+  try {
+    const accessToken = await getItem(ACCESS_TOKEN_KEY);
+    if (!accessToken) {
+      return null;
+    }
+    await fetchUserInfo(accessToken);
+    const userInfo = await getItem(USER_INFO_KEY);
+    return userInfo ? JSON.parse(userInfo) : null;
+  } catch (error) {
+    console.error('Refresh user info error:', error);
+    return null;
+  }
 }
 
 // Helper functions
 
 async function storeTokens(authResult) {
   if (authResult.AccessToken) {
-    localStorage.setItem(ACCESS_TOKEN_KEY, authResult.AccessToken);
+    await setItem(ACCESS_TOKEN_KEY, authResult.AccessToken);
   }
   if (authResult.IdToken) {
-    localStorage.setItem(ID_TOKEN_KEY, authResult.IdToken);
+    await setItem(ID_TOKEN_KEY, authResult.IdToken);
   }
   if (authResult.RefreshToken) {
-    localStorage.setItem(REFRESH_TOKEN_KEY, authResult.RefreshToken);
+    await setItem(REFRESH_TOKEN_KEY, authResult.RefreshToken);
   }
 }
 
@@ -330,7 +417,7 @@ async function fetchUserInfo(accessToken) {
       email_verified: response.UserAttributes.find(attr => attr.Name === 'email_verified')?.Value === 'true',
     };
 
-    localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+    await setItem(USER_INFO_KEY, JSON.stringify(userInfo));
   } catch (error) {
     console.error('Fetch user info error:', error);
   }

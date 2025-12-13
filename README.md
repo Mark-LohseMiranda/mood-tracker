@@ -495,7 +495,10 @@ Response: { message: "Account data deleted successfully" }
 - **JWT Tokens**: Short-lived access tokens (60 minutes), long-lived refresh tokens (30 days)
 - **Automatic Token Refresh**: Tokens refreshed before expiration for seamless 30-day sessions
 - **Token Validation**: API Gateway Cognito authorizer validates JWTs
-- **Secure Token Storage**: localStorage with automatic cleanup on sign out
+- **Persistent Storage**: IndexedDB for auth tokens (survives PWA restarts on iOS/Android/macOS)
+  - Access, ID, and refresh tokens stored in IndexedDB for PWA persistence
+  - Automatic cleanup on sign out
+  - Fallback to localStorage for temporary data (temp_username during MFA)
 - **MFA Support**: TOTP-based multi-factor authentication preserved from hosted UI
 
 ### Custom Authentication Features

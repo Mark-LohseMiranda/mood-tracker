@@ -5,7 +5,8 @@ import {
   isAuthenticated as checkAuth, 
   signOut as authSignOut,
   getAccessToken,
-  getIdToken
+  getIdToken,
+  refreshUserInfo as refreshUser
 } from './lib/auth';
 
 const AuthContext = createContext(null);
@@ -23,7 +24,8 @@ export function AuthContextProvider({ children }) {
   const checkAuthStatus = async () => {
     setIsLoading(true);
     try {
-      if (checkAuth()) {
+      const authenticated = await checkAuth();
+      if (authenticated) {
         const currentUser = await getCurrentUser();
         if (currentUser) {
           setUser(currentUser);
@@ -58,6 +60,19 @@ export function AuthContextProvider({ children }) {
     }
   };
 
+  const refreshUserInfo = async () => {
+    try {
+      const updatedUser = await refreshUser();
+      if (updatedUser) {
+        setUser(updatedUser);
+      }
+      return updatedUser;
+    } catch (error) {
+      console.error('Refresh user info failed:', error);
+      return null;
+    }
+  };
+
   const value = {
     user,
     isAuthenticated,
@@ -66,6 +81,7 @@ export function AuthContextProvider({ children }) {
     signOut,
     getAccessToken,
     getIdToken,
+    refreshUserInfo,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
