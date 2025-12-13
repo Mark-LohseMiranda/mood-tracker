@@ -41,6 +41,12 @@ provider:
             - "cognito-idp:DeleteUser"
           Resource:
             - "*"
+        - Effect: "Allow"
+          Action:
+            - "ses:SendEmail"
+            - "ses:SendRawEmail"
+          Resource:
+            - "*"
 
   # environment vars still available to lambdas:
   environment:
@@ -198,6 +204,13 @@ functions:
               - Content-Type
               - Authorization
             allowCredentials: true
+
+  postConfirmation:
+    handler: postConfirmation.handler
+    package:
+      patterns:
+        - 'postConfirmation.js'
+    # No HTTP event - this is a Cognito trigger
 
 resources:
   Resources:

@@ -63,6 +63,7 @@
 - **Password Management**: Change password securely
 - **Multi-Factor Authentication (MFA)**: Optional TOTP-based MFA setup
 - **Account Deletion**: Complete data removal (S3, DynamoDB, Cognito)
+- **Signup Notifications**: Automatic email alerts to admin when new users register (via SES)
 
 ### 🔒 Security & Privacy
 - **End-to-End Encryption**: Sensitive data (notes, feelings, consumption) encrypted client-side before storage
@@ -198,6 +199,13 @@
    - Frontend calls Cognito DeleteUser API directly
    - Clears localStorage/sessionStorage → Redirects to home
 
+5. **New User Signup Notification**:
+   - User completes registration and confirms email
+   - Cognito triggers postConfirmation Lambda
+   - Lambda sends formatted email to info@myemtee.com via SES
+   - Email includes user details (email, name, user ID, timestamp)
+   - Signup flow continues normally even if notification fails
+
 ---
 
 ## 🛠️ Tech Stack
@@ -220,6 +228,7 @@
 | **S3** | Object storage | Profile pictures & hosting |
 | **CloudFront** | CDN | Content delivery |
 | **Cognito** | User authentication | Identity provider |
+| **SES** | Email service | Signup notifications |
 | **Serverless Framework** | 4.x | Infrastructure as Code |
 
 ### Third-Party Services
@@ -273,6 +282,7 @@ mood-tracker/
 │   ├── 📄 getProfilePictureUploadUrl.js  # GET /profile/picture-upload-url
 │   ├── 📄 deleteProfilePicture.js   # DELETE /profile/picture
 │   ├── 📄 deleteAccount.js          # POST /account
+│   ├── 📄 postConfirmation.js       # Cognito trigger (sends signup emails)
 │   ├── 📄 package.json              # Lambda dependencies
 │   └── 📂 lib/
 │       └── 📄 utils.js              # Shared utilities (CORS, error handler)
@@ -366,7 +376,9 @@ npx serverless deploy
 ```
 
 This deploys:
-- 7 Lambda functions (individually packaged)
+- 8 Lambda functions (individually packaged)
+  - 7 API endpoints
+  - 1 Cognito trigger (postConfirmation)
 - API Gateway REST API
 - DynamoDB table
 - S3 bucket for profile pictures
