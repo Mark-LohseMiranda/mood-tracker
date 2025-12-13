@@ -1,10 +1,29 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuthContext } from "./AuthContext";
 
 export default function Header() {
   const { user, signOut } = useAuthContext();
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+
+    if (menuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [menuOpen]);
 
   const getInitial = () => {
     const name = user?.name || user?.email || '?';
@@ -31,7 +50,7 @@ export default function Header() {
           }}
         />
       </Link>
-      <div style={{ display: "flex", alignItems: "center", gap: "1rem", position: "relative" }}>
+      <div ref={menuRef} style={{ display: "flex", alignItems: "center", gap: "1rem", position: "relative" }}>
         {user?.picture ? (
           <img
             src={user.picture}
