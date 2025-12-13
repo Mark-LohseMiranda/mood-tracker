@@ -1,12 +1,12 @@
-import { useAuth } from 'react-oidc-context';
+import { useAuthContext } from './AuthContext';
 import { useNavigate } from 'react-router-dom';
 import './Instructions.css';
 
 function Instructions() {
-  const auth = useAuth();
+  const { isAuthenticated } = useAuthContext();
   const navigate = useNavigate();
 
-  if (!auth.isAuthenticated) {
+  if (!isAuthenticated) {
     navigate('/');
     return null;
   }

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from 'react-oidc-context';
+import { useAuthContext } from './AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import './AccountSettings.css';
 
 function AccountSettings() {
-  const auth = useAuth();
+  const { user, getIdToken, getAccessToken } = useAuthContext();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(false);
@@ -54,7 +54,7 @@ function AccountSettings() {
   };
 
   const cognitoRequest = async (target, body) => {
-    const accessToken = auth.user?.access_token;
+    const accessToken = await getAccessToken();
     if (!accessToken) throw new Error('Not authenticated');
 
     const response = await fetch(`https://cognito-idp.${import.meta.env.VITE_COGNITO_REGION}.amazonaws.com/`, {
@@ -171,7 +171,7 @@ function AccountSettings() {
   const deleteUnsavedPicture = async (pictureUrl) => {
     try {
       // Extract the key from the URL and delete it
-      const token = auth.user?.id_token;
+      const token = await getIdToken();
       // We'll need a new endpoint to delete a specific picture
       await fetch(
         `${import.meta.env.VITE_API_URL}/profile/picture?url=${encodeURIComponent(pictureUrl)}`,
@@ -206,7 +206,7 @@ function AccountSettings() {
     setUploadingPicture(true);
     try {
       // Get presigned upload URL (and delete old picture if exists)
-      const token = auth.user?.id_token;
+      const token = await getIdToken();
       let url = `${import.meta.env.VITE_API_URL}/profile/picture-upload-url?fileType=${encodeURIComponent(file.type)}`;
       if (profileForm.picture) {
         url += `&oldPictureUrl=${encodeURIComponent(profileForm.picture)}`;
@@ -266,8 +266,7 @@ function AccountSettings() {
       setOriginalProfile({ ...profileForm });
       setHasUnsavedChanges(false);
       setUnsavedUploadedPicture(null);
-      // Force token refresh to get updated claims
-      await auth.signinSilent();
+      // User info will be refreshed on next getCurrentUser call
     } catch (error) {
       showMessage('error', error.message || 'Failed to update profile');
     } finally {
@@ -332,7 +331,7 @@ function AccountSettings() {
       setSecretKey(secret);
       
       // Generate QR code URL
-      const email = auth.user?.profile.email;
+      const email = user.email;
       const issuer = 'MoodTracker';
       const qrUrl = `otpauth://totp/${issuer}:${email}?secret=${secret}&issuer=${issuer}`;
       setQrCode(qrUrl);
@@ -403,7 +402,7 @@ function AccountSettings() {
 
     setLoading(true);
     try {
-      const token = auth.user?.id_token;
+      const token = await getIdToken();
       
       // Delete from S3
       const deleteResponse = await fetch(
@@ -423,10 +422,7 @@ function AccountSettings() {
         ]
       });
 
-      // Force OIDC to refresh user info
-      if (auth.signinSilent) {
-        await auth.signinSilent();
-      }
+      // User info will be refreshed on next getCurrentUser call
 
       // Clear picture from form and original profile
       setProfileForm({ ...profileForm, picture: '' });
@@ -442,7 +438,7 @@ function AccountSettings() {
 
   // Get initial for profile avatar
   const getInitial = () => {
-    const name = profileForm.name || auth.user?.profile.name || auth.user?.profile.email || '?';
+    const name = profileForm.name || user.name || user.email || '?';
     return name.charAt(0).toUpperCase();
   };
 
@@ -461,7 +457,7 @@ function AccountSettings() {
 
     setIsDeleting(true);
     try {
-      const token = auth.user?.access_token;
+      const token = await getAccessToken();
       console.log('Delete account - has token:', !!token);
       console.log('Token preview:', token ? token.substring(0, 50) + '...' : 'NO TOKEN');
       

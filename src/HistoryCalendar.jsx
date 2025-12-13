@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from 'react-oidc-context';
+import { useAuthContext } from './AuthContext';
 import './HistoryCalendar.css';
-import { decryptEntries } from './lib/encryption';
+import { decryptEntries, decryptFeeling } from './lib/encryption';
 
 // Month names lookup
 const MONTH_NAMES = [
@@ -32,7 +32,7 @@ function generateCalendarDates(year, month) {
 }
 
 export default function HistoryCalendar() {
-  const auth = useAuth();
+  const { user, getIdToken } = useAuthContext();
 
   // Determine "today" once, for default values
   const today = new Date();
@@ -70,7 +70,7 @@ export default function HistoryCalendar() {
 
   // Fetch or load from cache whenever currentYear/currentMonth changes
 useEffect(() => {
-  if (!auth.isAuthenticated) return;
+  if (!user) return;
 
   // Build our “YYYY-MM” key
   const ymKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
@@ -102,7 +102,7 @@ useEffect(() => {
     setEntryLoaded(false);
     let exists = false;
     try {
-      const token    = auth.user?.id_token;
+      const token    = await getIdToken();
       const resp     = await fetch(
         `${import.meta.env.VITE_API_URL}/entries/history?year=${currentYear}&month=${String(currentMonth).padStart(2, '0')}`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -112,8 +112,7 @@ useEffect(() => {
         const monthMap = {};
         
         // Decrypt feelings and calculate averages
-        const userSub = auth.user?.profile?.sub;
-        const { decryptFeeling } = await import('./lib/encryption.js');
+        const userSub = user.sub;
         
         for (const { date, feelings } of data) {
           if (!feelings || feelings.length === 0) continue;
@@ -169,7 +168,7 @@ useEffect(() => {
       setEntryLoaded(true);
     }
   })();
-}, [auth.isAuthenticated, currentYear, currentMonth, cache]);
+}, [user, currentYear, currentMonth, cache]);
 
   // Change month helpers
   const goToPreviousMonth = () => {
@@ -198,8 +197,8 @@ useEffect(() => {
     setLoadingEntries(true);
     
     try {
-      const token = auth.user?.id_token;
-      const userSub = auth.user?.profile?.sub;
+      const token = await getIdToken();
+      const userSub = user.sub;
       const resp = await fetch(
         `${import.meta.env.VITE_API_URL}/entries/day?date=${dateStr}`,
         { headers: { Authorization: `Bearer ${token}` } }

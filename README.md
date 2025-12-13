@@ -50,7 +50,12 @@
 - **Trend Analysis**: Observe patterns over time with visual mood averages
 
 ### 👤 Account Management
-- **Secure Authentication**: AWS Cognito with custom domain and OIDC
+- **Custom Authentication UI**: Direct Cognito integration with password manager support
+  - Email/password login with MFA support
+  - User registration with email verification
+  - Forgot password flow
+  - Proper autocomplete attributes for 1Password, LastPass, Bitwarden
+- **Landing Page**: Marketing page with app overview before authentication
 - **Profile Customization**: 
   - Display name
   - Profile pictures with S3 storage
@@ -62,18 +67,25 @@
 ### 🔒 Security & Privacy
 - **End-to-End Encryption**: Sensitive data (notes, feelings, consumption) encrypted client-side before storage
 - **Zero-Knowledge Privacy**: Encryption keys never leave your browser - even developers can't read your private data
-- **OAuth 2.0 / OIDC**: Industry-standard authentication
+- **AWS Cognito Authentication**: Direct SDK integration with USER_PASSWORD_AUTH flow
 - **Multi-Layer Encryption**: Client-side AES-256-GCM + AWS encryption at rest
 - **HTTPS Only**: SSL/TLS for all communications
 - **CORS Protection**: Strict origin policies
-- **Token-based Authorization**: JWT access/ID tokens
+- **Token-based Authorization**: JWT access/ID tokens with automatic refresh
 - **Legal Compliance**: Privacy Policy, Terms of Service, GDPR-ready
 - **Cookie Consent**: Usercentrics CMP integration
 
 ### 🎨 User Experience
 - **Dark Mode**: Automatic detection with manual toggle support
 - **Responsive Design**: Mobile-first, works on all devices with proper viewport handling
-- **PWA Support**: Install as native app, offline-ready
+- **PWA Support**: Install as native app, offline-ready with automatic updates
+  - iOS-compatible update mechanism (unregister/re-register service worker)
+  - Checks for updates every 60 seconds when app is active
+  - Auto-reloads when new version detected
+- **Password Manager Compatible**: Works with 1Password, LastPass, Bitwarden on all platforms
+  - Desktop: Full autofill for username, password, and MFA codes
+  - Mobile: Autofill for username/password, manual MFA entry (iOS limitation)
+  - Auto-submit detection for seamless login experience
 - **Unsaved Changes Protection**: Navigation warnings prevent data loss
 - **Loading States**: Clear feedback during async operations
 - **Error Handling**: User-friendly error messages
@@ -90,11 +102,12 @@
 │                         FRONTEND (React SPA)                        │
 │                                                                     │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐               │
-│  │   Vite Dev   │  │ React Router │  │  OIDC Auth   │               │
+│  │   Vite Dev   │  │ React Router │  │  Custom Auth │               │
 │  │   Server     │  │   (v7.6.0)   │  │   Context    │               │
 │  └──────────────┘  └──────────────┘  └──────────────┘               │
 │                                                                     │
-│  Components: Header, Footer, DailyQuestions, HistoryCalendar,       │
+│  Components: LandingPage, Login, SignUp, ForgotPassword, Header,    │
+│             Footer, DailyQuestions, HistoryCalendar,                │
 │             AccountSettings, Instructions, Policy Pages             │
 └─────────────────────────────────────────────────────────────────────┘
                                 │
@@ -160,10 +173,11 @@
 ### Data Flow
 
 1. **User Sign-In**:
-   - User clicks "Sign In" → Redirected to Cognito Hosted UI
-   - Cognito authenticates → Returns authorization code
-   - Frontend exchanges code for tokens (access, ID, refresh)
-   - Tokens stored in OIDC context
+   - User enters credentials on custom login page
+   - Frontend calls Cognito InitiateAuth API directly
+   - If MFA enabled, user enters TOTP code → RespondToAuthChallenge
+   - Cognito returns tokens (access, ID, refresh)
+   - Tokens stored in localStorage with automatic refresh
 
 2. **Creating a Mood Entry**:
    - User fills out form → Frontend sends POST with access token
@@ -194,7 +208,7 @@
 | **React** | 19.1.0 | UI framework |
 | **Vite** | 6.3.5 | Build tool & dev server |
 | **React Router** | 7.6.0 | Client-side routing |
-| **react-oidc-context** | 3.5.2 | OAuth/OIDC authentication |
+| **@aws-sdk/client-cognito-identity-provider** | Latest | Direct Cognito authentication |
 | **Workbox** | PWA service worker |
 
 ### Backend
@@ -224,6 +238,13 @@ mood-tracker/
 │   ├── 📄 App.css                   # Global styles, hamburger menu animation
 │   ├── 📄 Header.jsx                # Navigation header with animated menu
 │   ├── 📄 Footer.jsx                # Footer with policy links
+│   ├── 📄 LandingPage.jsx           # Marketing page with sign in/sign up
+│   ├── 📄 LandingPage.css           # Landing page styles
+│   ├── 📄 Login.jsx                 # Custom login UI with MFA
+│   ├── 📄 Login.css                 # Authentication UI styles
+│   ├── 📄 SignUp.jsx                # User registration with verification
+│   ├── 📄 ForgotPassword.jsx        # Password reset flow
+│   ├── 📄 AuthContext.jsx           # Auth state management context
 │   ├── 📄 DailyQuestions.jsx        # Mood entry form
 │   ├── 📄 DailyQuestions.css        # Sleep section responsive styles
 │   ├── 📄 HistoryCalendar.jsx       # Calendar view with modal
@@ -239,6 +260,7 @@ mood-tracker/
 │   ├── 📄 FeelingSelector.jsx       # Emoji mood selector
 │   ├── 📄 index.css                 # Base styles, responsive layout fixes
 │   ├── 📂 lib/                      # Utility libraries
+│   │   ├── 📄 auth.js               # Custom Cognito authentication
 │   │   └── 📄 encryption.js         # Client-side AES-256-GCM encryption
 │   └── 📂 assets/                   # Static assets
 │
@@ -317,14 +339,13 @@ mood-tracker/
    
    Create `.env` in the root directory:
    ```env
-   VITE_COGNITO_DOMAIN=https://auth.yourdomain.com
-   VITE_COGNITO_AUTHORITY=https://cognito-idp.your-region.amazonaws.com/your-user-pool-id
+   VITE_COGNITO_USER_POOL_ID=your-user-pool-id
    VITE_COGNITO_CLIENT_ID=your-client-id
-   VITE_COGNITO_REDIRECT_URI=https://yourdomain.com
-   VITE_COGNITO_LOGOUT_URI=https://yourdomain.com
    VITE_COGNITO_REGION=your-region
    VITE_API_URL=https://your-api-id.execute-api.your-region.amazonaws.com/dev
    ```
+   
+   **Note**: Custom authentication no longer requires COGNITO_DOMAIN, AUTHORITY, REDIRECT_URI, or LOGOUT_URI
 
 5. **Run locally**
    ```bash
@@ -469,10 +490,21 @@ Response: { message: "Account data deleted successfully" }
 ## 🔐 Security
 
 ### Authentication & Authorization
-- **OAuth 2.0 / OpenID Connect**: Industry-standard protocols
-- **JWT Tokens**: Short-lived access tokens (60 minutes)
-- **Token Validation**: API Gateway Cognito authorizer
-- **Secure Token Storage**: OIDC context manages tokens securely
+- **Custom Cognito Integration**: Direct AWS SDK calls with USER_PASSWORD_AUTH flow
+- **Password Manager Support**: Proper autocomplete attributes for 1Password, LastPass, Bitwarden
+- **JWT Tokens**: Short-lived access tokens (60 minutes), long-lived refresh tokens (30 days)
+- **Automatic Token Refresh**: Tokens refreshed before expiration for seamless 30-day sessions
+- **Token Validation**: API Gateway Cognito authorizer validates JWTs
+- **Secure Token Storage**: localStorage with automatic cleanup on sign out
+- **MFA Support**: TOTP-based multi-factor authentication preserved from hosted UI
+
+### Custom Authentication Features
+- **Landing Page**: Marketing page before authentication with app overview
+- **Custom Login**: Email/password with MFA challenge support on your domain
+- **User Registration**: Sign up with email verification flow
+- **Password Reset**: Forgot password with email verification code
+- **Same-Domain Forms**: No redirect to separate auth domain for better UX and security
+- **Client-Side Flow**: Direct Cognito API calls via @aws-sdk/client-cognito-identity-provider
 
 ### Data Protection
 - **Client-Side Encryption**: Sensitive fields (notes, feelings, consumption) encrypted in browser using AES-256-GCM before transmission

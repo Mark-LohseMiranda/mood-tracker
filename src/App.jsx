@@ -1,6 +1,6 @@
-import { useAuth } from "react-oidc-context";
+import { useState } from "react";
+import { useAuthContext } from "./AuthContext";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { useEffect } from "react";
 import FeelingSelector from "./FeelingSelector";
 import DailyQuestions from "./DailyQuestions";
 import HistoryCalendar from "./HistoryCalendar";
@@ -12,54 +12,78 @@ import CookiePolicy from "./CookiePolicy";
 import Instructions from "./Instructions";
 import Header from "./Header";
 import Footer from "./Footer";
+import LandingPage from "./LandingPage";
+import Login from "./Login";
+import SignUp from "./SignUp";
+import ForgotPassword from "./ForgotPassword";
 import "./App.css"; 
 
 function App() {
-  const auth = useAuth();
+  const { isAuthenticated, isLoading, checkAuthStatus } = useAuthContext();
+  const [authView, setAuthView] = useState('landing'); // 'landing', 'login', 'signup', 'forgot-password'
 
-  // Automatically trigger silent sign-in if there's an active session
-  useEffect(() => {
-    if (!auth.isLoading && !auth.isAuthenticated && !auth.error && !auth.activeNavigator) {
-      auth.signinSilent().catch(() => {
-        // Silently fail - user just needs to click sign in
-      });
-    }
-  }, [auth]);
-
-  if (auth.isLoading) {
-    return <div>Loading...</div>;
-  }
-
-  // Only show error if it's not a "login required" error from silent sign-in
-  if (auth.error && auth.error.message !== "Login required") {
-    return <div>Encountering error... {auth.error.message}</div>;
-  }
-
-  // If not signed in, show your sign-in UI
-  if (!auth.isAuthenticated) {
+  if (isLoading) {
     return (
-      <div id="login-container">
-        <img
-          src="/logo-min.webp"
-          alt="Mood Tracker Logo"
-          style={{
-            width: "400px",
-            height: "auto",
-            objectFit: "contain",
-            marginBottom: "1rem",
-          }}
-        />
-        <button onClick={() => auth.signinRedirect()}>Sign in</button>
-        <p>
-          This app is a simple mood and sleep tracker. It allows you to log your
-          feelings and answer daily questions about your mood and sleep.
-          <br />
-          <strong>
-            Note: This app is not intended for medical use. Please consult a
-            healthcare professional for any mental health concerns.
-          </strong>
-        </p>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontSize: '1.2rem',
+        color: '#667eea'
+      }}>
+        Loading...
       </div>
+    );
+  }
+
+  // If not signed in, show auth UI
+  if (!isAuthenticated) {
+    const handleLoginSuccess = () => {
+      checkAuthStatus();
+    };
+
+    const handleSignUpSuccess = () => {
+      setAuthView('login');
+    };
+
+    const handleResetSuccess = () => {
+      setAuthView('login');
+    };
+
+    if (authView === 'landing') {
+      return (
+        <LandingPage
+          onSignIn={() => setAuthView('login')}
+          onSignUp={() => setAuthView('signup')}
+        />
+      );
+    }
+
+    if (authView === 'signup') {
+      return (
+        <SignUp
+          onSignUpSuccess={handleSignUpSuccess}
+          onSwitchToLogin={() => setAuthView('login')}
+        />
+      );
+    }
+
+    if (authView === 'forgot-password') {
+      return (
+        <ForgotPassword
+          onResetSuccess={handleResetSuccess}
+          onSwitchToLogin={() => setAuthView('login')}
+        />
+      );
+    }
+
+    return (
+      <Login
+        onLoginSuccess={handleLoginSuccess}
+        onSwitchToSignUp={() => setAuthView('signup')}
+        onSwitchToForgotPassword={() => setAuthView('forgot-password')}
+      />
     );
   }
 

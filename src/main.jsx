@@ -2,36 +2,51 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
-import { AuthProvider } from "react-oidc-context";
+import { AuthContextProvider } from "./AuthContext";
 import "./index.css";
 
-const cognitoAuthConfig = {
-  authority: import.meta.env.VITE_COGNITO_AUTHORITY,
-  client_id: import.meta.env.VITE_COGNITO_CLIENT_ID,
-  redirect_uri: import.meta.env.VITE_COGNITO_REDIRECT_URI,
-  post_logout_redirect_uri: import.meta.env.VITE_COGNITO_LOGOUT_URI,
-  response_type: "code",
-  scope: "openid email profile aws.cognito.signin.user.admin",
-  automaticSilentRenew: true, // Auto-refresh tokens using refresh token
-  metadata: {
-    issuer: import.meta.env.VITE_COGNITO_AUTHORITY,
-    authorization_endpoint: `${import.meta.env.VITE_COGNITO_DOMAIN}/oauth2/authorize`,
-    token_endpoint: `${import.meta.env.VITE_COGNITO_DOMAIN}/oauth2/token`,
-    userinfo_endpoint: `${import.meta.env.VITE_COGNITO_DOMAIN}/oauth2/userInfo`,
-    end_session_endpoint: `${import.meta.env.VITE_COGNITO_DOMAIN}/logout`,
-    jwks_uri: `${import.meta.env.VITE_COGNITO_AUTHORITY}/.well-known/jwks.json`,
+// Register PWA service worker with iOS-specific update handling
+import { registerSW } from 'virtual:pwa-register';
+
+const updateSW = registerSW({
+  immediate: true,
+  onNeedRefresh() {
+    // For iOS PWAs, we need to unregister the service worker entirely
+    // then reload to force update (standard methods don't work on iOS)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => {
+          registration.unregister();
+        });
+        // Force reload after unregistering
+        window.location.reload(true);
+      });
+    }
   },
-};
+  onOfflineReady() {
+    console.log('App ready to work offline');
+  },
+  onRegisteredSW(swUrl, r) {
+    console.log('Service Worker registered:', swUrl);
+    // Check for updates every 60 seconds
+    r && setInterval(() => {
+      console.log('Checking for SW update...');
+      r.update();
+    }, 60000);
+  },
+  onRegisterError(error) {
+    console.error('SW registration error', error);
+  }
+});
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
-// wrap the application with AuthProvider
 root.render(
   <React.StrictMode>
-    <AuthProvider {...cognitoAuthConfig}>
+    <AuthContextProvider>
       <BrowserRouter>
         <App />
       </BrowserRouter>
-    </AuthProvider>
+    </AuthContextProvider>
   </React.StrictMode>
 );

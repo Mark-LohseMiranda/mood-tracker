@@ -1,27 +1,19 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "react-oidc-context";
+import { useAuthContext } from "./AuthContext";
 
 export default function Header() {
-  const auth = useAuth();
+  const { user, signOut } = useAuthContext();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const getInitial = () => {
-    const name = auth.user?.profile.name || auth.user?.profile.email || '?';
+    const name = user?.name || user?.email || '?';
     return name.charAt(0).toUpperCase();
   };
 
-  const signOutRedirect = async () => {
-    const cognitoDomain = import.meta.env.VITE_COGNITO_DOMAIN;
-    const clientId = import.meta.env.VITE_COGNITO_CLIENT_ID;
-    const logoutUri = import.meta.env.VITE_COGNITO_LOGOUT_URI;
-    
-    // Clear local state and cache
-    await auth.removeUser();
-    localStorage.removeItem('historyCache');
-    
-    // Manually construct the correct Cognito logout URL
-    window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;
+  const handleSignOut = async () => {
+    setMenuOpen(false);
+    await signOut();
   };
 
   return (
@@ -40,9 +32,9 @@ export default function Header() {
         />
       </Link>
       <div style={{ display: "flex", alignItems: "center", gap: "1rem", position: "relative" }}>
-        {auth.user?.profile.picture ? (
+        {user?.picture ? (
           <img
-            src={auth.user.profile.picture}
+            src={user.picture}
             alt=""
             style={{
               width: "40px",
@@ -56,11 +48,11 @@ export default function Header() {
             }}
           />
         ) : null}
-        <div className="header-profile-initial" style={{ display: auth.user?.profile.picture ? 'none' : 'flex' }}>
+        <div className="header-profile-initial" style={{ display: user?.picture ? 'none' : 'flex' }}>
           {getInitial()}
         </div>
         <span>
-          {auth.user?.profile.name || auth.user?.profile.email}
+          {user?.name || user?.email}
         </span>
         <button 
           onClick={() => setMenuOpen(!menuOpen)}
@@ -82,7 +74,7 @@ export default function Header() {
             <Link to="/settings" onClick={() => setMenuOpen(false)}>
               Settings
             </Link>
-            <Link to="#" onClick={(e) => { e.preventDefault(); setMenuOpen(false); signOutRedirect(); }}>
+            <Link to="#" onClick={(e) => { e.preventDefault(); handleSignOut(); }}>
               Sign out
             </Link>
           </div>

@@ -1,7 +1,7 @@
 // src/DailyQuestions.jsx
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "react-oidc-context";
+import { useAuthContext } from "./AuthContext";
 import { encryptEntry, decryptEntry } from "./lib/encryption";
 import "./DailyQuestions.css";
 
@@ -9,7 +9,7 @@ export default function DailyQuestions() {
   const navigate = useNavigate();
   const { state } = useLocation();
   const feeling = state?.feeling || "😐";
-  const auth = useAuth();
+  const { user, getIdToken } = useAuthContext();
 
   const todayKey = `entry:${new Date().toISOString().slice(0, 10)}`;
 
@@ -54,12 +54,12 @@ export default function DailyQuestions() {
 
   // Load any saved entry from the API once authenticated
   useEffect(() => {
-    if (!auth.isAuthenticated) return;
+    if (!user) return;
 
     (async () => {
       try {
-        const token = auth.user?.id_token;
-        const userSub = auth.user?.profile?.sub;
+        const token = await getIdToken();
+        const userSub = user.sub;
         const resp = await fetch(
           `${import.meta.env.VITE_API_URL}/entries/today`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -81,7 +81,7 @@ export default function DailyQuestions() {
         setEntryLoaded(true);
       }
     })();
-  }, [auth.isAuthenticated, todayKey]);
+  }, [user, todayKey]);
 
   const handleCheckbox = (key) => {
     setConsumed((c) => ({ ...c, [key]: !c[key] }));
@@ -89,7 +89,7 @@ export default function DailyQuestions() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!auth.isAuthenticated) {
+    if (!user) {
       return alert("Please sign in to save.");
     }
 
@@ -105,10 +105,10 @@ export default function DailyQuestions() {
     };
 
     // Encrypt sensitive fields before sending to backend
-    const userSub = auth.user?.profile?.sub;
+    const userSub = user.sub;
     const encryptedEntry = await encryptEntry(entry, userSub);
 
-    const token = auth.user?.id_token;
+    const token = await getIdToken();
     const resp = await fetch(`${import.meta.env.VITE_API_URL}/entries`, {
       method: "POST",
       headers: {
