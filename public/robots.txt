@@ -1,0 +1,9 @@
+# Allow all search engines to crawl public pages
+User-agent: *
+Allow: /
+Disallow: /settings
+Disallow: /questions
+Disallow: /history
+
+# Sitemap location
+Sitemap: https://myemtee.com/sitemap.xml
