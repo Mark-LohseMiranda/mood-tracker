@@ -39,6 +39,7 @@ provider:
         - Effect: "Allow"
           Action:
             - "cognito-idp:DeleteUser"
+            - "cognito-idp:GetUser"
           Resource:
             - "*"
         - Effect: "Allow"

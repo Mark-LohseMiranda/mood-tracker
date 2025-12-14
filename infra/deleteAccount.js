@@ -72,26 +72,35 @@ async function deleteAccount(event) {
     }
     
     // Delete all DynamoDB entries for this user
-    const entries = await db.send(new QueryCommand({
-      TableName: 'MoodEntries',
-      KeyConditionExpression: 'userId = :u',
-      ExpressionAttributeValues: {
-        ':u': { S: userId }
+    try {
+      const entries = await db.send(new QueryCommand({
+        TableName: 'MoodEntries',
+        KeyConditionExpression: 'userId = :u',
+        ExpressionAttributeValues: {
+          ':u': { S: userId }
+        }
+      }));
+      
+      // Delete each entry
+      if (entries.Items && entries.Items.length > 0) {
+        console.log(`Found ${entries.Items.length} mood entries to delete`);
+        for (const item of entries.Items) {
+          await db.send(new DeleteItemCommand({
+            TableName: 'MoodEntries',
+            Key: {
+              userId: { S: userId },
+              timestamp: item.timestamp
+            }
+          }));
+        }
+        console.log(`Successfully deleted ${entries.Items.length} mood entries`);
+      } else {
+        console.log('No mood entries found for user');
       }
-    }));
-    
-    // Delete each entry
-    if (entries.Items && entries.Items.length > 0) {
-      for (const item of entries.Items) {
-        await db.send(new DeleteItemCommand({
-          TableName: 'MoodEntries',
-          Key: {
-            userId: { S: userId },
-            timestamp: item.timestamp
-          }
-        }));
-      }
-      console.log(`Deleted ${entries.Items.length} mood entries`);
+    } catch (dbError) {
+      console.error('Error deleting DynamoDB entries:', dbError);
+      // This is critical - throw error so frontend knows deletion failed
+      throw new Error('Failed to delete mood entries: ' + dbError.message);
     }
     
     // Note: Cognito user deletion is handled by the frontend directly

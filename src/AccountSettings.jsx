@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import './AccountSettings.css';
 
 function AccountSettings() {
-  const { user, getIdToken, getAccessToken, refreshUserInfo } = useAuthContext();
+  const { user, getIdToken, getAccessToken, refreshUserInfo, signOut } = useAuthContext();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(false);
@@ -477,24 +477,28 @@ function AccountSettings() {
         let errorMessage = 'Failed to delete account data';
         try {
           const error = await response.json();
+          console.error('Lambda error response:', error);
           errorMessage = error.error || errorMessage;
         } catch (e) {
-          // Response body is not JSON
+          console.error('Failed to parse error response:', e);
         }
         throw new Error(errorMessage);
       }
 
+      const deleteResponse = await response.json();
+      console.log('Lambda success response:', deleteResponse);
+
       // Then delete the Cognito user directly from frontend
       await cognitoRequest('DeleteUser', {});
 
-      // Clean up local storage and redirect
+      // Clean up all auth state (IndexedDB, localStorage, sessionStorage)
+      await signOut();
+      
+      // Show success message
       showMessage('success', 'Account deleted successfully');
+      
+      // Redirect to home page
       setTimeout(() => {
-        // Clear all local storage
-        localStorage.clear();
-        // Clear session storage
-        sessionStorage.clear();
-        // Redirect to home page
         window.location.href = 'https://myemtee.com';
       }, 2000);
     } catch (error) {

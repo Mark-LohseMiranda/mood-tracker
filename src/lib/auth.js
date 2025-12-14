@@ -358,14 +358,46 @@ export async function isAuthenticated() {
  * Get access token (for API calls)
  */
 export async function getAccessToken() {
-  return await getItem(ACCESS_TOKEN_KEY);
+  const accessToken = await getItem(ACCESS_TOKEN_KEY);
+  if (!accessToken) return null;
+
+  // Check if token is expired
+  const tokenPayload = parseJwt(accessToken);
+  if (tokenPayload.exp * 1000 < Date.now()) {
+    // Token expired, try to refresh
+    try {
+      await refreshSession();
+      return await getItem(ACCESS_TOKEN_KEY);
+    } catch (error) {
+      console.error('Failed to refresh access token:', error);
+      return null;
+    }
+  }
+
+  return accessToken;
 }
 
 /**
  * Get ID token (contains user claims)
  */
 export async function getIdToken() {
-  return await getItem(ID_TOKEN_KEY);
+  const idToken = await getItem(ID_TOKEN_KEY);
+  if (!idToken) return null;
+
+  // Check if token is expired
+  const tokenPayload = parseJwt(idToken);
+  if (tokenPayload.exp * 1000 < Date.now()) {
+    // Token expired, try to refresh
+    try {
+      await refreshSession();
+      return await getItem(ID_TOKEN_KEY);
+    } catch (error) {
+      console.error('Failed to refresh id token:', error);
+      return null;
+    }
+  }
+
+  return idToken;
 }
 
 /**
