@@ -48,6 +48,10 @@
 - **Timezone-Aware Grouping**: Entries are grouped by your local date, not UTC - no more late-night entries appearing on the wrong day
 - **Client-Side Decryption**: Calendar averages calculated in your browser after decrypting your entries
 - **Trend Analysis**: Observe patterns over time with visual mood averages
+- **Multi-Device Sync**: Automatic cache invalidation across devices
+  - Cache cleared on login for fresh data
+  - 5-minute cache expiration for cross-device updates
+  - Manual refresh available anytime
 
 ### 👤 Account Management
 - **Custom Authentication UI**: Direct Cognito integration with password manager support
@@ -73,6 +77,9 @@
 - **HTTPS Only**: SSL/TLS for all communications
 - **CORS Protection**: Strict origin policies
 - **Token-based Authorization**: JWT access/ID tokens with automatic refresh
+  - Access/ID tokens automatically refreshed when expired
+  - 30-day refresh token for extended sessions
+  - Smart error handling - only logs out on actual token expiration, not network errors
 - **Legal Compliance**: Privacy Policy, Terms of Service, GDPR-ready
 - **Cookie Consent**: Usercentrics CMP integration
 
@@ -93,6 +100,7 @@
 - **In-App Instructions**: Comprehensive help page with screenshots for new users
 - **Animated Navigation**: Smooth hamburger-to-X menu animation
 - **Session Persistence**: 30-day refresh token for extended login sessions
+- **Version Display**: App version shown in footer for deployment verification across devices
 
 ---
 
@@ -205,6 +213,20 @@
    - Lambda sends formatted email to info@myemtee.com via SES
    - Email includes user details (email, name, user ID, timestamp)
    - Signup flow continues normally even if notification fails
+
+6. **Multi-Device Cache Synchronization**:
+   - Device 1 creates entry → Cache invalidated locally
+   - Entry saved to DynamoDB (source of truth)
+   - Device 2 on login → Cache cleared → Fresh data fetched
+   - Device 2 idle > 5 minutes → Cache expired → Next calendar view fetches fresh data
+   - Ensures consistent data across all logged-in devices
+
+7. **Automatic Token Refresh**:
+   - Access/ID tokens expire (typically 1 hour)
+   - Any API call detects expired token
+   - Automatically uses refresh token to get new access/ID tokens
+   - User stays logged in for up to 30 days (refresh token expiration)
+   - Only logs out if refresh token is actually expired, not on temporary network errors
 
 ---
 
@@ -388,15 +410,23 @@ This deploys:
 ### Frontend Deployment
 
 ```bash
-# Build for production
+# 1. Update version number in src/Footer.jsx
+# Change APP_VERSION constant (e.g., "1.00" → "1.01")
+
+# 2. Build for production
 npm run build
 
-# Sync to S3
+# 3. Sync to S3
 aws s3 sync dist/ s3://your-s3-bucket-name/ --delete
 
-# Invalidate CloudFront cache
+# 4. Invalidate CloudFront cache
 aws cloudfront create-invalidation --distribution-id YOUR_DISTRIBUTION_ID --paths "/*"
 ```
+
+**Version Management:**
+- Update `APP_VERSION` in [src/Footer.jsx](src/Footer.jsx) before each deployment
+- Version is displayed in footer for easy verification across devices
+- Use two decimal places: `1.00`, `1.01`, `1.10`, `2.00`, etc.
 
 ---
 

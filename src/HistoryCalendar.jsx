@@ -53,7 +53,24 @@ export default function HistoryCalendar() {
   const [cache, setCache] = useState(() => {
     try {
       const raw = localStorage.getItem('historyCache');
-      return raw ? JSON.parse(raw) : {};
+      if (!raw) return {};
+      
+      const parsed = JSON.parse(raw);
+      
+      // Check if cache has timestamp and if it's older than 5 minutes
+      const cacheTimestamp = localStorage.getItem('historyCacheTimestamp');
+      if (cacheTimestamp) {
+        const cacheAge = Date.now() - parseInt(cacheTimestamp, 10);
+        const FIVE_MINUTES = 5 * 60 * 1000;
+        if (cacheAge > FIVE_MINUTES) {
+          // Cache is stale, clear it
+          localStorage.removeItem('historyCache');
+          localStorage.removeItem('historyCacheTimestamp');
+          return {};
+        }
+      }
+      
+      return parsed;
     } catch {
       return {};
     }
@@ -63,6 +80,7 @@ export default function HistoryCalendar() {
   useEffect(() => {
     try {
       localStorage.setItem('historyCache', JSON.stringify(cache));
+      localStorage.setItem('historyCacheTimestamp', Date.now().toString());
     } catch {
       // ignore storage errors
     }

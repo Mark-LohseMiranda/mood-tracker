@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 
+// App version - update this manually when deploying new versions
+const APP_VERSION = "1.00";
+
 export default function Footer() {
   const currentYear = new Date().getFullYear();
   const [policiesOpen, setPoliciesOpen] = useState(false);
@@ -34,6 +37,9 @@ export default function Footer() {
     }}>
       <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem", opacity: 0.7 }}>
         © {currentYear} Mood Tracker. All rights reserved.
+      </p>
+      <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.8rem", opacity: 0.5 }}>
+        v{APP_VERSION}
       </p>
       <div ref={menuRef} style={{ position: "relative", display: "inline-block" }}>
         <button 

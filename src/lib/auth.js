@@ -125,6 +125,8 @@ export async function signIn(username, password) {
     if (response.AuthenticationResult) {
       await storeTokens(response.AuthenticationResult);
       await fetchUserInfo(response.AuthenticationResult.AccessToken);
+      // Clear history cache on login to ensure fresh data from server
+      localStorage.removeItem('historyCache');
       return { success: true };
     }
 
@@ -159,6 +161,8 @@ export async function verifyMFA(session, mfaCode) {
       await storeTokens(response.AuthenticationResult);
       await fetchUserInfo(response.AuthenticationResult.AccessToken);
       localStorage.removeItem('temp_username');
+      // Clear history cache on login to ensure fresh data from server
+      localStorage.removeItem('historyCache');
       return { success: true };
     }
 
@@ -284,10 +288,27 @@ export async function refreshSession() {
     throw new Error('Failed to refresh session');
   } catch (error) {
     console.error('Refresh session error:', error);
-    // Clear tokens if refresh fails
-    await signOut();
+    
+    // Only clear tokens if the refresh token itself is invalid/expired
+    // Don't clear on network errors or temporary failures
+    if (error.name === 'NotAuthorizedException' || error.message?.includes('Refresh Token has expired')) {
+      console.log('Refresh token expired, clearing all tokens');
+      await clearTokens();
+    }
+    
     throw error;
   }
+}
+
+/**
+ * Clear all stored tokens (without calling Cognito)
+ */
+async function clearTokens() {
+  await removeItem(ACCESS_TOKEN_KEY);
+  await removeItem(ID_TOKEN_KEY);
+  await removeItem(REFRESH_TOKEN_KEY);
+  await removeItem(USER_INFO_KEY);
+  localStorage.removeItem('historyCache');
 }
 
 /**
@@ -306,14 +327,8 @@ export async function signOut() {
   } catch (error) {
     console.error('Sign out error:', error);
   } finally {
-    // Clear storage regardless of API call success
-    await removeItem(ACCESS_TOKEN_KEY);
-    await removeItem(ID_TOKEN_KEY);
-    await removeItem(REFRESH_TOKEN_KEY);
-    await removeItem(USER_INFO_KEY);
-    
-    // Keep localStorage for non-auth data
-    localStorage.removeItem('historyCache');
+    // Clear all tokens
+    await clearTokens();
   }
 }
 
