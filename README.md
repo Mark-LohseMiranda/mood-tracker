@@ -37,7 +37,11 @@
 
 ### 📊 Mood Tracking
 - **Daily Mood Entries**: Log how you're feeling with emoji-based mood selection
-- **Sleep Tracking**: Record sleep duration and quality for the first entry of each day
+- **Sleep Tracking**: Record sleep duration and quality once per calendar day
+  - Smart sleep prompt: Yes/no modal with time-aware greeting (Good morning/afternoon/evening)
+  - Only prompted once per local calendar day - perfect for irregular sleep schedules
+  - Can add sleep data anytime during the day (not just first entry)
+  - Works across timezone changes - local calendar day determines when you can log sleep
 - **Consumption Logging**: Track intake of caffeine, alcohol, cannabis, and nicotine
 - **Notes**: Add detailed notes to any entry for context and reflection
 - **Multiple Entries**: Create multiple mood entries throughout the day
@@ -200,10 +204,19 @@
    - Tokens stored in IndexedDB with automatic refresh
 
 2. **Creating a Mood Entry**:
-   - User fills out form → Frontend sends POST with access token
+   - User loads DailyQuestions page
+   - Frontend checks all entries for today's local date via `GET /entries/day?date=YYYY-MM-DD`
+   - If no sleep data exists for the day, modal prompts: "{Greeting}! Did you get some sleep last night?" (Yes/No)
+     - **Yes**: Shows sleep quality/duration form alongside mood/consumption form
+     - **No**: Hides sleep form, user logs mood without sleep data
+   - If sleep data already exists for today: No modal, sleep form hidden
+   - User fills out form (mood, optionally sleep, consumption, notes) → Frontend sends POST with access token
    - API Gateway validates token with Cognito authorizer
-   - Lambda function processes entry → Stores in DynamoDB
-   - Response returned to frontend → UI updates
+   - Lambda validates localDate is provided and checks for existing sleep data on the same local date
+   - If user tries to add sleep when sleep already exists: Returns 400 error
+   - Lambda stores entry in DynamoDB with UTC timestamp and localDate (for timezone-aware queries)
+   - Response includes `needsSleepTracking` flag for frontend status
+   - Response returned to frontend → UI updates → Cache invalidated for calendar
 
 3. **Profile Picture Upload**:
    - User selects image → Frontend requests presigned URL
@@ -417,7 +430,7 @@ This deploys:
   - 11 API endpoints (mood tracking, profile, device management, account)
   - 1 Cognito trigger (postConfirmation)
 - API Gateway REST API
-- DynamoDB table
+- DynamoDB table with GSI: `userIdLocalDateIndex` (userId PK, localDate SK) for timezone-aware queries
 - S3 bucket for profile pictures
 - IAM roles and policies
 - Gateway responses with CORS
@@ -481,19 +494,34 @@ Authorization: Bearer <token>
     "nicotine": 0
   },
   "notes": "Great day!",
-  "sleep": {             // Only for first entry of the day
+  "sleep": {             // Optional - can be added anytime during the day
     "duration": 7.5,
     "quality": 4
   }
 }
+
+Response: 201 Created
+{
+  "message": "Entry created successfully.",
+  "needsSleepTracking": false  // Frontend uses this to determine if user should be prompted for sleep
+}
 ```
 
-**Get Today's Entry**
+**Get Today's Entries**
 ```http
-GET /entries/today
+GET /entries/day?date=2025-12-27
 Authorization: Bearer <token>
 
-Response: Entry object or 404
+Response: Array of all entries for that day (grouped by localDate)
+```
+
+**Get Entry for Today (Legacy)**
+```http
+GET /entries/today?localDate=2025-12-27
+Authorization: Bearer <token>
+
+Response: First entry object for that date or 404
+Note: Returns only the first entry matching the localDate
 ```
 
 **Get Month History**
@@ -609,7 +637,45 @@ Response: { message: "Account data deleted successfully" }
 
 ---
 
-## 🔐 Security
+## � Sleep Tracking Implementation
+
+### Overview
+Sleep tracking is optimized for users with irregular sleep schedules (shift workers, night owls, etc.) by allowing flexible sleep logging once per local calendar day, rather than forcing it on the first entry.
+
+### Architecture
+
+**Backend Storage** (`createEntry.js`):
+- Checks all entries for the user's local calendar day using GSI: `userIdLocalDateIndex` (userId + localDate)
+- If sleep data exists for that localDate, rejects attempts to add more sleep (`400 Bad Request`)
+- If no sleep data exists, allows optional sleep fields (sleepQuality, sleepDuration) with any entry
+- Response includes `needsSleepTracking` flag indicating if user should be prompted
+
+**Frontend Logic** (`DailyQuestions.jsx`):
+1. On page load: Fetches all entries for today's local date via `GET /entries/day?date=YYYY-MM-DD`
+2. Checks if any entry has sleep data (sleepQuality && sleepDuration)
+3. **If sleep data exists**: No modal, no sleep form - user sees only mood/consumption/notes sections
+4. **If no sleep data**: Shows modal with time-aware greeting:
+   - 5 AM - 12 PM: "Good morning! Did you get some sleep last night?"
+   - 12 PM - 5 PM: "Good afternoon! Did you get some sleep last night?"
+   - 5 PM+: "Good evening! Did you get some sleep last night?"
+   - User clicks "Yes" → Shows sleep form with quality (1-5 stars) and duration (4-10+ hours)
+   - User clicks "No" → Skips sleep form, proceeds to mood entry
+5. Sleep form remains hidden if user previously clicked "No" during the same session
+
+**Database** (serverless.yml):
+- GSI: `userIdLocalDateIndex` enables efficient per-day sleep tracking
+- Primary key: userId (PK) + timestamp (SK) - stored in UTC for timezone portability
+- localDate (YYYY-MM-DD) - user's local calendar date, used for all "day boundary" logic
+
+### Use Cases
+✅ Shift workers: Sleep at 8 AM, log mood at 6 PM - same day in their timezone  
+✅ Night owls: Sleep at 5 AM, log mood at 10 AM - no re-prompting for sleep  
+✅ Time zone travelers: localDate anchors entries to user's perceived day, UTC timestamp ensures global consistency  
+✅ Multiple entries: Log mood 3x per day - only prompted for sleep once
+
+---
+
+## �🔐 Security
 
 ### Authentication & Authorization
 - **Custom Cognito Integration**: Direct AWS SDK calls with USER_PASSWORD_AUTH flow using amazon-cognito-identity-js

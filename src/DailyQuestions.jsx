@@ -42,7 +42,9 @@ export default function DailyQuestions() {
 
   // State
   const [entryLoaded, setEntryLoaded] = useState(false);
-  const [entryExists, setEntryExists] = useState(false);
+  const [hasSleepData, setHasSleepData] = useState(false);
+  const [showSleepPrompt, setShowSleepPrompt] = useState(false);
+  const [userSkippedSleep, setUserSkippedSleep] = useState(false);
   const [sleepQuality, setSleepQuality] = useState(null);
   const [sleepDuration, setSleepDuration] = useState(null);
   const [consumed, setConsumed] = useState({
@@ -52,7 +54,7 @@ export default function DailyQuestions() {
   });
   const [notes, setNotes] = useState("");
 
-  // Load any saved entry from the API once authenticated
+  // Load sleep status from the API once authenticated
   useEffect(() => {
     if (!user) return;
 
@@ -60,23 +62,44 @@ export default function DailyQuestions() {
       try {
         const token = await getIdToken();
         const userSub = user.sub;
+        
+        // Calculate local date (user's timezone)
+        const now = new Date();
+        const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        
+        // Fetch all entries for today to check if ANY have sleep data
         const resp = await fetch(
-          `${import.meta.env.VITE_API_URL}/entries/today`,
+          `${import.meta.env.VITE_API_URL}/entries/day?date=${localDate}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (resp.ok) {
-          const e = await resp.json();
-          // Decrypt the entry before using it
-          const decrypted = await decryptEntry(e, userSub);
-          setEntryExists(true);
-          setSleepQuality(decrypted.sleepQuality);
-          setSleepDuration(decrypted.sleepDuration);
-          // Note: consumed and notes are not loaded here, but could be if needed
+          const entries = await resp.json();
+          // Check if any entry has sleep data
+          const hasSleep = entries.some(e => e.sleepQuality != null && e.sleepDuration != null);
+          
+          if (hasSleep) {
+            setHasSleepData(true);
+            // Find the entry with sleep data and populate the fields
+            const sleepEntry = entries.find(e => e.sleepQuality != null && e.sleepDuration != null);
+            if (sleepEntry) {
+              const decrypted = await decryptEntry(sleepEntry, userSub);
+              setSleepQuality(decrypted.sleepQuality);
+              setSleepDuration(decrypted.sleepDuration);
+            }
+          } else {
+            setHasSleepData(false);
+            // Show prompt to ask if user wants to add sleep
+            setShowSleepPrompt(true);
+          }
         } else {
-          setEntryExists(false);
+          // No entries exist, so definitely no sleep data yet
+          setHasSleepData(false);
+          setShowSleepPrompt(true);
         }
       } catch {
-        setEntryExists(false);
+        // Error fetching, assume no sleep data
+        setHasSleepData(false);
+        setShowSleepPrompt(true);
       } finally {
         setEntryLoaded(true);
       }
@@ -85,6 +108,26 @@ export default function DailyQuestions() {
 
   const handleCheckbox = (key) => {
     setConsumed((c) => ({ ...c, [key]: !c[key] }));
+  };
+
+  const handleAddSleep = () => {
+    setShowSleepPrompt(false);
+    setUserSkippedSleep(false);
+    // Sleep form will be shown below
+  };
+
+  const handleSkipSleep = () => {
+    setShowSleepPrompt(false);
+    setUserSkippedSleep(true);
+    // User chose not to add sleep now
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return "Good morning";
+    if (hour >= 12 && hour < 17) return "Good afternoon";
+    if (hour >= 17 && hour < 21) return "Good evening";
+    return "Good evening"; // Night owl hours
   };
 
   const handleSubmit = async (e) => {
@@ -157,11 +200,30 @@ export default function DailyQuestions() {
 
   return (
     <div className="daily-questions-container">
+      {/* Sleep Tracking Prompt Modal */}
+      {showSleepPrompt && !hasSleepData && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>{getGreeting()}! Did you get some sleep last night?</h2>
+            <p>You haven't recorded sleep data for today yet.</p>
+            <div className="modal-buttons">
+              <button onClick={handleAddSleep} className="btn-yes">
+                Yes, add sleep data
+              </button>
+              <button onClick={handleSkipSleep} className="btn-no">
+                No, skip for now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <h1 style={{ textAlign: "center" }}>
         You're feeling {FEELING_MAP[feeling]}
       </h1>
       <form onSubmit={handleSubmit} className="daily-questions-form">
-        {entryLoaded && !entryExists && (
+        {/* Show sleep form only if user clicked "Yes" and hasn't already submitted sleep data */}
+        {!showSleepPrompt && !userSkippedSleep && !hasSleepData && (
           <>
             {/* Sleep Quality Row */}
             <fieldset className="sleep-fieldset">

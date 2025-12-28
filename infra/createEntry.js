@@ -20,33 +20,47 @@ async function createEntry(event) {
   }
   const userId = claims.sub;
   const data   = JSON.parse(event.body);
-  const today  = new Date().toISOString().slice(0,10);
+  
+  // Use localDate from request (user's timezone), not UTC
+  const localDate = data.localDate;
+  if (!localDate) {
+    return {
+      statusCode: 400,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ error: 'localDate is required' })
+    };
+  }
 
-  // 1) Check if any entry exists today
+  // 1) Check if any entry exists today (using localDate and userIdLocalDateIndex GSI)
   const existing = await db.send(new QueryCommand({
     TableName: 'MoodEntries',
-    KeyConditionExpression: 'userId = :u AND begins_with(#ts, :d)',
-    ExpressionAttributeNames: { '#ts': 'timestamp' },
+    IndexName: 'userIdLocalDateIndex',
+    KeyConditionExpression: 'userId = :u AND localDate = :d',
     ExpressionAttributeValues: {
       ':u': { S: userId },
-      ':d': { S: today }
-    },
-    Limit: 1
+      ':d': { S: localDate }
+    }
   }));
 
-  // 2) If first entry of the day, require sleep fields
-  const isFirst = !existing.Items || existing.Items.length === 0;
-  if (isFirst && (data.sleepQuality == null || data.sleepDuration == null)) {
+  // 2) Check if user has already submitted sleep data for this local calendar day
+  const hasSleepData = existing.Items && existing.Items.some(item => 
+    item.sleepQuality && item.sleepDuration
+  );
+
+  // 3) If no sleep data yet and sleep fields provided, save them
+  // If no sleep data and no sleep fields, that's OK - frontend will prompt user
+  if (hasSleepData && (data.sleepQuality != null || data.sleepDuration != null)) {
+    // User is trying to add sleep data when it already exists - reject
     return {
       statusCode: 400,
       headers: CORS_HEADERS,
       body: JSON.stringify({
-        error: 'Sleep quality and duration are required on your first entry today.'
+        error: 'Sleep data already recorded for today. You can only add sleep once per calendar day.'
       })
     };
   }
 
-  // 3) Build the new item
+  // 4) Build the new item
   const timestamp = new Date().toISOString();
   const item = {
     userId:    { S: userId },
@@ -74,25 +88,25 @@ async function createEntry(event) {
       }
     };
   }
-  // only include sleep on the first entry
-  if (isFirst) {
+  
+  // Include sleep fields if provided (user chose to add sleep)
+  if (data.sleepQuality != null && data.sleepDuration != null) {
     item.sleepQuality  = { N: String(data.sleepQuality) };
     item.sleepDuration = { N: String(data.sleepDuration) };
   }
 
-  // 4) Insert a brand-new item
+  // 5) Insert a brand-new item
   await db.send(new PutItemCommand({
     TableName: 'MoodEntries',
     Item: item
   }));
 
   return {
-    statusCode: isFirst ? 201 : 200,
+    statusCode: 201,
     headers:    CORS_HEADERS,
     body:       JSON.stringify({
-      message: isFirst 
-        ? "Created your first entry today."
-        : "Created an additional entry."
+      message: "Entry created successfully.",
+      needsSleepTracking: !hasSleepData // Frontend uses this to prompt user
     })
   };
 }

@@ -18,18 +18,25 @@ async function getTodayEntry(event) {
     };
   }
   const userId = claims.sub;
-  const today = new Date().toISOString().slice(0, 10);
+  
+  // Use localDate from query params (user's timezone), not UTC
+  const localDate = event.queryStringParameters?.localDate;
+  if (!localDate) {
+    return {
+      statusCode: 400,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ error: "localDate query param is required (format: YYYY-MM-DD)" }),
+    };
+  }
 
   const resp = await db.send(
     new QueryCommand({
       TableName: "MoodEntries",
-      KeyConditionExpression: "userId = :u AND begins_with(#ts, :d)",
-      ExpressionAttributeNames: {
-        "#ts": "timestamp",
-      },
+      IndexName: "userIdLocalDateIndex",
+      KeyConditionExpression: "userId = :u AND localDate = :d",
       ExpressionAttributeValues: {
         ":u": { S: userId },
-        ":d": { S: today },
+        ":d": { S: localDate },
       },
       Limit: 1,
     })

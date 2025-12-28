@@ -134,7 +134,6 @@ useEffect(() => {
           const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
           tokenUse = payload.token_use || payload.tokenUse || null;
         } catch (e) {}
-        console.info('HistoryCalendar: /entries/history token masked=', masked, 'token_use=', tokenUse, 'status=', resp.status);
       } catch(e) {}
 
       if (resp.ok) {

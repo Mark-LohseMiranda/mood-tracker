@@ -22,6 +22,7 @@ provider:
             - "dynamodb:UpdateItem"
           Resource:
             - "arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/MoodEntries"
+            - "arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/MoodEntries/index/userIdLocalDateIndex"
         - Effect: "Allow"
           Action:
             - "s3:PutObject"
@@ -320,11 +321,22 @@ resources:
             AttributeType: S
           - AttributeName: timestamp
             AttributeType: S
+          - AttributeName: localDate
+            AttributeType: S
         KeySchema:
           - AttributeName: userId
             KeyType: HASH
           - AttributeName: timestamp
             KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: userIdLocalDateIndex
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+              - AttributeName: localDate
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
         BillingMode: PAY_PER_REQUEST
 
     ProfilePicturesBucket:
