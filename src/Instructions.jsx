@@ -1,10 +1,83 @@
 import { useAuthContext } from './AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
 import './Instructions.css';
 
 function Instructions() {
   const { isAuthenticated } = useAuthContext();
   const navigate = useNavigate();
+  const [activeId, setActiveId] = useState('getting-started');
+  const [tocOpen, setTocOpen] = useState(false);
+
+  const sections = useMemo(() => ([
+    { id: 'getting-started', label: 'Getting Started' },
+    { id: 'creating-entries', label: 'Creating Entries' },
+    { id: 'viewing-history', label: 'Viewing Your History' },
+    { id: 'account-settings', label: 'Account Settings' },
+    { id: 'remembered-devices', label: 'Remembered Devices' },
+    { id: 'privacy-security', label: 'Privacy & Security' },
+    { id: 'tips', label: 'Tips' },
+    { id: 'faq', label: 'Common Questions' },
+    { id: 'help', label: 'Need Help' },
+  ]), []);
+
+  // Scrollspy: highlight the section with largest intersection ratio
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Pick the entry most visible in the viewport
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) {
+          setActiveId(visible.target.id);
+        }
+      },
+      {
+        // Account for fixed header and make active when roughly upper half is visible
+        root: null,
+        rootMargin: '-100px 0px -40% 0px',
+        threshold: [0.2, 0.4, 0.6, 0.8],
+      }
+    );
+
+    sections.forEach((s) => {
+      const el = document.getElementById(s.id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [sections]);
+
+  const handleNavigate = (id) => {
+    setTocOpen(false);
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  // Fallback scroll-based highlight for sections (helps edge cases)
+  useEffect(() => {
+    const headerOffset = 120; // approximate header + spacing
+    const handler = () => {
+      const scrollPos = window.scrollY + headerOffset;
+      let current = sections[0]?.id;
+      sections.forEach((s) => {
+        const el = document.getElementById(s.id);
+        if (!el) return;
+        const top = el.offsetTop;
+        if (top <= scrollPos) current = s.id;
+      });
+      if (current) setActiveId(current);
+    };
+    window.addEventListener('scroll', handler, { passive: true });
+    window.addEventListener('resize', handler);
+    handler();
+    return () => {
+      window.removeEventListener('scroll', handler);
+      window.removeEventListener('resize', handler);
+    };
+  }, [sections]);
 
   if (!isAuthenticated) {
     navigate('/');
@@ -12,15 +85,57 @@ function Instructions() {
   }
 
   return (
-    <div className="instructions-container">
-      <h1>📖 How to Use My Mood Tracker</h1>
+    <div className="instructions-page">
+      {/* Mobile TOC toggle */}
+      <button className="toc-toggle" onClick={() => setTocOpen(true)}>Contents</button>
+
+      <div className="instructions-layout">
+        {/* Sticky sidebar TOC (hidden on small screens) */}
+        <aside className="toc">
+          <div className="toc-title">Contents</div>
+          <nav>
+            {sections.map((s) => (
+              <button
+                key={s.id}
+                className={`toc-item ${activeId === s.id ? 'active' : ''}`}
+                onClick={() => handleNavigate(s.id)}
+              >
+                {s.label}
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        {/* TOC flyout for mobile */}
+        {tocOpen && (
+          <div className="toc-flyout" role="dialog" aria-modal="true">
+            <div className="toc-flyout-header">
+              <span>Contents</span>
+              <button className="toc-close" onClick={() => setTocOpen(false)}>×</button>
+            </div>
+            <nav className="toc-flyout-nav">
+              {sections.map((s) => (
+                <button
+                  key={s.id}
+                  className={`toc-item ${activeId === s.id ? 'active' : ''}`}
+                  onClick={() => handleNavigate(s.id)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+        )}
+
+        <div className="instructions-container">
+          <h1>📖 How to Use My Mood Tracker</h1>
       
-      <section className="instruction-section">
+      <section id="getting-started" className="instruction-section">
         <h2>🎯 Getting Started</h2>
         <p>Welcome! My Mood Tracker helps you monitor your daily moods, sleep patterns, and wellness habits over time.</p>
       </section>
 
-      <section className="instruction-section">
+      <section id="creating-entries" className="instruction-section">
         <h2>📝 Creating Entries</h2>
         <div className="instruction-step">
           <h3>1. Log Your Mood</h3>
@@ -70,7 +185,7 @@ function Instructions() {
         </div>
       </section>
 
-      <section className="instruction-section">
+      <section id="viewing-history" className="instruction-section">
         <h2>📅 Viewing Your History</h2>
         <div className="instruction-step">
           <h3>Calendar View</h3>
@@ -97,7 +212,7 @@ function Instructions() {
         </div>
       </section>
 
-      <section className="instruction-section">
+      <section id="account-settings" className="instruction-section">
         <h2>👤 Account Settings</h2>
         <p>Click your profile picture or <strong>Settings</strong> in the menu to:</p>
         <img src="/screenshots/account-settings.webp" alt="Account settings page showing profile options" className="screenshot" />
@@ -111,7 +226,48 @@ function Instructions() {
         </ul>
       </section>
 
-      <section className="instruction-section">
+      <section id="remembered-devices" className="instruction-section">
+        <h2>🖥️ Remembered Devices</h2>
+        <div className="instruction-step">
+          <h3>What is a remembered device?</h3>
+          <p>When you <strong>remember</strong> a device, future sign-ins on that browser/device will usually skip MFA challenges. This uses AWS Cognito’s device remembering and is tied to your account.</p>
+        </div>
+        <div className="instruction-step">
+          <h3>Enable or disable remember prompts</h3>
+          <ul>
+            <li>Open <strong>Settings → Devices</strong>.</li>
+            <li>If prompts are disabled, click <strong>Re-enable remember prompts</strong> to allow remembering devices again.</li>
+            <li>With prompts enabled, the app may offer to remember your current device after MFA (or when re-enabling prompts).</li>
+          </ul>
+        </div>
+        <div className="instruction-step">
+          <h3>Remember this device</h3>
+          <ul>
+            <li>Sign in and complete MFA. This generates a device key for your browser.</li>
+            <li>Go to <strong>Settings → Devices</strong>. If a local device key is detected, you’ll see a modal offering <strong>Remember</strong> for this device.</li>
+            <li>If no local key is detected, <strong>sign out and sign back in</strong> to generate one, then revisit Devices.</li>
+          </ul>
+          <p className="privacy-note">Note: The device list no longer includes a per-device “Remember” button. Remembering your current device is done via the modal in the Devices tab.</p>
+        </div>
+        <div className="instruction-step">
+          <h3>Forget a device</h3>
+          <ul>
+            <li>Open <strong>Settings → Devices</strong>.</li>
+            <li>Find the device and click <strong>Forget</strong>.</li>
+            <li>That device will require full authentication (including MFA) the next time it signs in.</li>
+          </ul>
+        </div>
+        <div className="instruction-step">
+          <h3>Troubleshooting</h3>
+          <ul>
+            <li><strong>No devices shown:</strong> Sign out, sign back in, and revisit Devices.</li>
+            <li><strong>Unauthorized error listing devices:</strong> Sign out and sign in again to refresh tokens.</li>
+            <li><strong>Remember prompts disabled:</strong> Use the toggle in Devices to re-enable, then remember the current device from the modal.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="privacy-security" className="instruction-section">
         <h2>🔐 Privacy & Security</h2>
         <div className="instruction-step">
           <h3>Your Data is Protected</h3>
@@ -124,7 +280,7 @@ function Instructions() {
         </div>
       </section>
 
-      <section className="instruction-section">
+      <section id="tips" className="instruction-section">
         <h2>💡 Tips for Best Results</h2>
         <ul>
           <li><strong>Be Consistent:</strong> Log entries regularly to spot patterns over time</li>
@@ -135,7 +291,7 @@ function Instructions() {
         </ul>
       </section>
 
-      <section className="instruction-section">
+      <section id="faq" className="instruction-section">
         <h2>❓ Common Questions</h2>
         <div className="faq">
           <div className="faq-item">
@@ -165,11 +321,13 @@ function Instructions() {
         </div>
       </section>
 
-      <section className="instruction-section">
+      <section id="help" className="instruction-section">
         <h2>📞 Need Help?</h2>
         <p>If you have questions or encounter issues, please contact us at:</p>
         <p><a href="mailto:mark@guardiancodewebservices.com">mark@guardiancodewebservices.com</a></p>
       </section>
+        </div>
+      </div>
     </div>
   );
 }

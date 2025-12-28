@@ -35,6 +35,9 @@ html, body {
   color: #213547;
   background-color: #ffffff;
   background-image: url(https://d3fez3f9kccsen.cloudfront.net/default-assets/image/cognito-image-background-page-light.svg);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
 
   /* Make sure the "dark" color-scheme is declared too: */
   color-scheme: light dark;
@@ -45,6 +48,9 @@ html.dark :root {
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
   background-image: url(https://d3fez3f9kccsen.cloudfront.net/default-assets/image/cognito-image-background-page-dark.svg);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
 }
 
 /* Links */
@@ -105,6 +111,9 @@ body {
     color: #213547;
     background-color: #ffffff;
     background-image: url(https://d3fez3f9kccsen.cloudfront.net/default-assets/image/cognito-image-background-page-light.svg);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-attachment: fixed;
   }
   a:hover {
     color: #747bff; /* slightly brighter on hover */
@@ -121,6 +130,9 @@ body {
     color: rgba(255, 255, 255, 0.87);
     background-color: #242424;
     background-image: url(https://d3fez3f9kccsen.cloudfront.net/default-assets/image/cognito-image-background-page-dark.svg);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-attachment: fixed;
   }
   a {
     color: #93a9ff; /* lighter link color in dark mode */

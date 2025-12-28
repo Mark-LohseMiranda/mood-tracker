@@ -1,8 +1,18 @@
+.instructions-page {
+  position: relative;
+}
+
+.instructions-layout {
+  display: flex;
+  gap: 1.5rem;
+}
+
 .instructions-container {
   max-width: 800px;
   margin: 0 auto;
   padding: 2rem;
   line-height: 1.6;
+  flex: 1 1 auto;
 }
 
 .instructions-container h1 {
@@ -14,10 +24,13 @@
 
 .instruction-section {
   margin-bottom: 3rem;
-  background: var(--card-bg);
+  /* Semi-transparent background to improve readability over page backdrop */
+  background: rgba(255, 255, 255, 0.88);
   padding: 2rem;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  scroll-margin-top: 120px;
+  backdrop-filter: blur(2px);
 }
 
 .instruction-section h2 {
@@ -143,18 +156,154 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+/* Sticky TOC */
+.toc {
+  position: fixed;
+  top: 80px;
+  left: 16px;
+  align-self: flex-start;
+  width: 220px;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+}
+
+.toc-title {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.toc-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  margin: 0.25rem 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.toc-item:hover {
+  background: var(--button-hover-bg);
+}
+
+.toc-item.active {
+  background: rgba(0, 112, 243, 0.1);
+  color: var(--text-primary);
+  border: 1px solid #0070f3;
+}
+
+/* Mobile TOC toggle button */
+.toc-toggle {
+  display: none;
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1010;
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--button-bg);
+  color: var(--text-primary);
+}
+
+/* Flyout for mobile */
+.toc-flyout {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 80%;
+  max-width: 320px;
+  background: rgba(255, 255, 255, 0.95);
+  border-left: 1px solid var(--border-color);
+  z-index: 1020;
+  display: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+
+.toc-flyout-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.toc-flyout-nav {
+  padding: 0.5rem 1rem 1rem;
+}
+
+.toc-close {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+}
+
 /* Dark mode support */
 [data-theme="dark"] .instruction-section {
-  background: var(--card-bg);
+  background: rgba(30, 30, 30, 0.88);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+[data-theme="dark"] .toc-flyout {
+  background: rgba(18, 18, 18, 0.95);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+}
+
+/* Dark-mode overrides for class-based theme and prefers-color-scheme */
+html.dark .instruction-section {
+  background: rgba(30, 30, 30, 0.88);
+}
+html.dark .toc {
+  background: rgba(18, 18, 18, 0.95);
+}
+html.dark .toc-flyout {
+  background: rgba(18, 18, 18, 0.95);
+}
+
+@media (prefers-color-scheme: dark) {
+  .instruction-section {
+    background: rgba(30, 30, 30, 0.88);
+  }
+  .toc {
+    background: rgba(18, 18, 18, 0.95);
+  }
+  .toc-flyout {
+    background: rgba(18, 18, 18, 0.95);
+  }
+  .toc-item {
+    color: rgba(255, 255, 255, 0.85);
+  }
+  .toc-item.active {
+    border-color: #93a9ff;
+  }
 }
 
 [data-theme="dark"] .faq-item {
   background: var(--bg-secondary);
 }
 
+/* Desktop spacing to account for fixed TOC */
+@media (min-width: 1521px) {
+  .instructions-container {
+    margin-left: 260px; /* room for fixed TOC */
+  }
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
+  .instructions-layout {
+    display: block;
+  }
+
   .instructions-container {
     padding: 1rem;
   }
@@ -173,5 +322,40 @@
 
   .instruction-step h3 {
     font-size: 1.1rem;
+  }
+
+  .toc {
+    display: none;
+  }
+
+  .toc-toggle {
+    display: inline-block;
+  }
+
+  .toc-flyout {
+    display: block;
+  }
+}
+
+/* Collapse TOC to mobile at medium widths to avoid header overlap */
+@media (max-width: 1520px) {
+  .instructions-layout {
+    display: block;
+  }
+  .instructions-container {
+    margin-left: 0;
+  }
+  .toc {
+    display: none;
+  }
+  .toc-toggle {
+    display: inline-block;
+    right: 1rem;
+    left: auto;
+  }
+  .toc-flyout {
+    display: block;
+    right: 0;
+    left: auto;
   }
 }

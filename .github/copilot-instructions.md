@@ -15,13 +15,13 @@ This is a **serverless PWA** split into two distinct environments:
 
 - **What's encrypted**: `feeling`, `notes`, `consumed` (caffeine, prescriptions, etc.)
 - **What's NOT**: `sleepQuality`, `sleepDuration`, `timestamp`, `localDate` (needed for calendar calculations)
-- **Key derivation**: `PBKDF2(userSub, salt, 100k iterations)` in [src/lib/encryption.js](src/lib/encryption.js)
+- **Key derivation**: `PBKDF2(userSub, salt, 100k iterations)` in [../src/lib/encryption.js](../src/lib/encryption.js)
 - **Algorithm**: AES-256-GCM with random IV per entry
 
 **When modifying data flows**:
-1. Encrypt in frontend via `encryptEntry()` before POST ([DailyQuestions.jsx](src/DailyQuestions.jsx#L97-L100))
-2. Backend stores encrypted strings as-is ([createEntry.js](infra/createEntry.js#L62-L74))
-3. Decrypt in frontend via `decryptEntries()` after fetch ([HistoryCalendar.jsx](src/HistoryCalendar.jsx#L4))
+1. Encrypt in frontend via `encryptEntry()` before POST ([../src/DailyQuestions.jsx](../src/DailyQuestions.jsx))
+2. Backend stores encrypted strings as-is ([../infra/createEntry.js](../infra/createEntry.js))
+3. Decrypt in frontend via `decryptEntries()` after fetch ([../src/HistoryCalendar.jsx](../src/HistoryCalendar.jsx))
 
 **Never store unencrypted sensitive data in DynamoDB or logs.**
 
@@ -29,11 +29,11 @@ This is a **serverless PWA** split into two distinct environments:
 
 **Custom Cognito integration** (not Amplify hosted UI):
 
-- Direct SDK calls via `@aws-sdk/client-cognito-identity-provider` in [src/lib/auth.js](src/lib/auth.js)
+- Direct SDK calls via `@aws-sdk/client-cognito-identity-provider` in [../src/lib/auth.js](../src/lib/auth.js)
 - **No OAuth redirects** - all forms in-app using `InitiateAuthCommand`, `RespondToAuthChallengeCommand`
 - Tokens stored in **IndexedDB** (primary) + localStorage (fallback) for PWA persistence
 - JWT access tokens sent in `Authorization: Bearer <token>` header to API Gateway
-- [AuthContext.jsx](src/AuthContext.jsx) provides `user`, `isAuthenticated`, `getIdToken()` globally
+- [../src/AuthContext.jsx](../src/AuthContext.jsx) provides `user`, `isAuthenticated`, `getIdToken()` globally
 
 **MFA flow**: Login → `SMS_MFA`/`SOFTWARE_TOKEN_MFA` challenge → `RespondToAuthChallengeCommand` with code
 
@@ -50,21 +50,21 @@ This is a **serverless PWA** split into two distinct environments:
   feeling: String (encrypted emoji),
   consumed: String (encrypted) or Map (legacy),
   notes: String (encrypted),
-  sleepQuality: Number (1-5, first entry only),
-  sleepDuration: Number (hours, first entry only)
+  sleepQuality: Number (1-5, once per local calendar day),
+  sleepDuration: Number (hours, once per local calendar day)
 }
 ```
 
 **Key patterns**:
-- First entry of each day **must** include sleep fields ([createEntry.js](infra/createEntry.js#L35-L41))
-- Use `localDate` for timezone-aware grouping in calendar ([DailyQuestions.jsx](src/DailyQuestions.jsx#L99))
-- Backend queries by `userId` and date prefix: `begins_with(timestamp, '2025-05')`
+- Sleep data can be logged once per local calendar day (checked via GSI query on localDate) ([../infra/createEntry.js](../infra/createEntry.js))
+- Use `localDate` for timezone-aware grouping in calendar ([../src/DailyQuestions.jsx](../src/DailyQuestions.jsx))
+- Backend queries by `userId` + `localDate` via GSI for day-scoped operations
 
 ## Cache Invalidation Pattern
 
 **Problem**: Calendar caches month averages in localStorage to avoid re-decryption.
 
-**Solution**: When creating entry in [DailyQuestions.jsx](src/DailyQuestions.jsx#L121-L135), delete that month's cache key:
+**Solution**: When creating entry in [../src/DailyQuestions.jsx](../src/DailyQuestions.jsx), delete that month's cache key:
 ```javascript
 const ymKey = `${year}-${month}`; // "2025-05"
 const cacheObj = JSON.parse(localStorage.getItem('historyCache'));
@@ -76,7 +76,7 @@ localStorage.setItem('historyCache', JSON.stringify(cacheObj));
 
 ## Lambda Function Patterns
 
-**All handlers follow this structure** (see [infra/lib/utils.js](infra/lib/utils.js)):
+**All handlers follow this structure** (see [../infra/lib/utils.js](../infra/lib/utils.js)):
 ```javascript
 const { wrap, CORS_HEADERS } = require('./lib/utils');
 
@@ -96,13 +96,14 @@ module.exports.handler = wrap(handler); // Wraps in try/catch
 Deploy backend from `infra/`:
 ```bash
 cd infra
-npx serverless deploy  # Deploys all 7 functions + API Gateway + DynamoDB
+npx serverless deploy  # Deploys all 12 functions + API Gateway + DynamoDB + GSI
 ```
 
-**Key config** ([serverless.yml](infra/serverless.yml)):
+**Key config** ([../infra/serverless.yml](../infra/serverless.yml)):
 - `package.individually: true` - each function bundles separately
 - Cognito authorizer shared across all endpoints (except `deleteAccount`)
 - IAM roles grant minimal DynamoDB/S3/Cognito permissions per function
+- GSI: `userIdLocalDateIndex` (userId PK, localDate SK) for timezone-aware daily queries
 
 ## Frontend Build & Deploy
 
@@ -122,7 +123,7 @@ VITE_API_URL=https://xxxxx.execute-api.us-west-2.amazonaws.com/dev
 
 ## PWA Update Mechanism
 
-**iOS-compatible update flow** ([main.jsx](src/main.jsx) + service worker):
+**iOS-compatible update flow** ([../src/main.jsx](../src/main.jsx) + service worker):
 1. Check for updates every 60 seconds when app active
 2. If new SW detected → unregister old → register new → reload page
 3. **Critical**: Must unregister old SW first on iOS for auto-update
@@ -131,7 +132,7 @@ VITE_API_URL=https://xxxxx.execute-api.us-west-2.amazonaws.com/dev
 
 ## React Router v7 Patterns
 
-**Routing** in [App.jsx](src/App.jsx):
+**Routing** in [../src/App.jsx](../src/App.jsx):
 - Unauthenticated: Landing page → Login/SignUp/ForgotPassword views
 - Authenticated: DailyQuestions, HistoryCalendar, AccountSettings, Instructions
 - Legal pages (Privacy, Terms, etc.) accessible to all
@@ -141,7 +142,7 @@ VITE_API_URL=https://xxxxx.execute-api.us-west-2.amazonaws.com/dev
 ## Code Conventions
 
 - **File structure**: Components in `src/`, Lambdas in `infra/`, shared utils in `lib/` subdirs
-- **Styling**: Per-component CSS files ([DailyQuestions.css](src/DailyQuestions.css), etc.)
+- **Styling**: Per-component CSS files ([../src/DailyQuestions.css](../src/DailyQuestions.css), etc.)
 - **Error handling**: User-friendly alerts in frontend, generic messages in backend (prevent info leakage)
 - **Date handling**: Always use user's local timezone for `localDate`, but store ISO8601 `timestamp` in UTC
 
@@ -149,12 +150,12 @@ VITE_API_URL=https://xxxxx.execute-api.us-west-2.amazonaws.com/dev
 
 **Adding a new Lambda**:
 1. Create `infra/newFunction.js` with `wrap()` pattern
-2. Add to `functions:` in [serverless.yml](infra/serverless.yml) with `package.patterns`
+2. Add to `functions:` in [../infra/serverless.yml](../infra/serverless.yml) with `package.patterns`
 3. Add IAM permissions if needed
 4. Deploy: `cd infra && npx serverless deploy`
 
 **Adding encrypted field**:
-1. Update `encryptEntry()`/`decryptEntry()` in [src/lib/encryption.js](src/lib/encryption.js)
+1. Update `encryptEntry()`/`decryptEntry()` in [../src/lib/encryption.js](../src/lib/encryption.js)
 2. Ensure backend stores as String in DynamoDB (not parsed)
 3. Test encryption/decryption cycle in browser console
 
@@ -164,7 +165,7 @@ VITE_API_URL=https://xxxxx.execute-api.us-west-2.amazonaws.com/dev
 - Test Cognito directly: `aws cognito-idp initiate-auth ...`
 
 **Profile picture uploads**:
-- Frontend validates: image type only, max 5MB ([AccountSettings.jsx](src/AccountSettings.jsx#L193-L202))
+- Frontend validates: image type only, max 5MB ([../src/AccountSettings.jsx](../src/AccountSettings.jsx))
 - **Display restrictions to users**: Show "Max 5MB, image files only" near upload button
 - Backend generates presigned S3 URL with 5-minute expiration
 - User-scoped keys: `{userId}/{timestamp}.{extension}` prevents cross-user access

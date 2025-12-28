@@ -558,31 +558,7 @@ function AccountSettings() {
     }
   };
 
-  const handleToggleRemember = async (deviceKey, remember) => {
-    setLoadingDevices(true);
-    try {
-      const token = await getIdToken();
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/device/remember`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ deviceKey, remember })
-      });
-      if (!res.ok) throw new Error('Failed to update device status');
-      showMessage('success', remember ? 'Device remembered' : 'Device set to not remembered');
-      try {
-        // If this deviceKey matches our locally stored key, update the remembered sentinel
-        const localKey = await getStoredDeviceKey(user.email);
-        if (localKey && localKey === deviceKey) {
-          await setStoredDeviceRemembered(user.email, remember);
-        }
-      } catch (e) {}
-      await loadDevices();
-    } catch (error) {
-      showMessage('error', error.message || 'Failed to update device');
-    } finally {
-      setLoadingDevices(false);
-    }
-  };
+  // Removed toggle remember action; only "Forget" remains in device list.
 
   // Get initial for profile avatar
   const getInitial = () => {
@@ -954,7 +930,6 @@ function AccountSettings() {
                         <th>Device Key</th>
                         <th>Created</th>
                         <th>Last Authenticated</th>
-                        <th>Remembered</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
@@ -971,12 +946,8 @@ function AccountSettings() {
                             </td>
                             <td>{d.DeviceCreateDate ? new Date(d.DeviceCreateDate).toLocaleString() : '-'}</td>
                             <td>{d.DeviceLastAuthenticatedDate ? new Date(d.DeviceLastAuthenticatedDate).toLocaleString() : '-'}</td>
-                            <td>{d.DeviceRememberedStatus || 'n/a'}</td>
                             <td>
-                              <button className={"device-action-btn " + (d.DeviceRememberedStatus === 'remembered' ? '' : 'primary')} onClick={() => handleToggleRemember(d.DeviceKey, d.DeviceRememberedStatus !== 'remembered')} disabled={loadingDevices}>
-                                {d.DeviceRememberedStatus === 'remembered' ? 'Unremember' : 'Remember'}
-                              </button>
-                              <button className="device-action-btn danger" onClick={() => handleForgetDevice(d.DeviceKey)} disabled={loadingDevices} style={{ marginLeft: '0.5rem' }}>
+                              <button className="device-action-btn danger" onClick={() => handleForgetDevice(d.DeviceKey)} disabled={loadingDevices}>
                                 Forget
                               </button>
                             </td>

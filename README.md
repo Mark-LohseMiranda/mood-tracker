@@ -72,8 +72,8 @@
 - **Multi-Factor Authentication (MFA)**: Optional TOTP-based MFA setup
 - **Device Remember**: Securely remember devices to skip MFA on subsequent logins
   - Choose to remember or never remember each device after MFA
-  - Device management in account settings (view, remember, or forget devices)
-  - "Never remember" preference persists across sessions
+  - Device management in account settings: view devices and forget them when needed; remembering the current device is offered via an in-app prompt/modal after MFA or when re-enabling prompts
+  - "Never remember" preference persists across sessions (toggle available in Devices tab)
   - Graceful fallback if device is no longer recognized by Cognito
 - **Account Deletion**: Complete data removal (S3, DynamoDB, Cognito)
 - **Signup Notifications**: Automatic email alerts to admin when new users register (via SES)
@@ -110,7 +110,7 @@
 - **Unsaved Changes Protection**: Navigation warnings prevent data loss
 - **Loading States**: Clear feedback during async operations
 - **Error Handling**: User-friendly error messages
-- **In-App Instructions**: Comprehensive help page with screenshots for new users
+- **In-App Instructions**: Comprehensive help page with screenshots, a sticky sidebar table of contents with scrollspy highlighting, and a mobile-friendly right-side flyout
 - **Animated Navigation**: Smooth hamburger-to-X menu animation
 - **Session Persistence**: 30-day refresh token for extended login sessions
 - **Version Display**: App version shown in footer for deployment verification across devices

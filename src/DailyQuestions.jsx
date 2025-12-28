@@ -79,13 +79,9 @@ export default function DailyQuestions() {
           
           if (hasSleep) {
             setHasSleepData(true);
-            // Find the entry with sleep data and populate the fields
-            const sleepEntry = entries.find(e => e.sleepQuality != null && e.sleepDuration != null);
-            if (sleepEntry) {
-              const decrypted = await decryptEntry(sleepEntry, userSub);
-              setSleepQuality(decrypted.sleepQuality);
-              setSleepDuration(decrypted.sleepDuration);
-            }
+            // Ensure local sleep fields remain empty so we don't resubmit them
+            setSleepQuality(null);
+            setSleepDuration(null);
           } else {
             setHasSleepData(false);
             // Show prompt to ask if user wants to add sleep
@@ -137,15 +133,21 @@ export default function DailyQuestions() {
     }
 
     const now = new Date();
+    // Build base entry
     const entry = {
       feeling,
-      sleepQuality,
-      sleepDuration,
       consumed,
       notes,
       timestamp: now.toISOString(),
       localDate: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`, // YYYY-MM-DD in user's timezone
     };
+
+    // Only include sleep fields if user is adding them for the first time today
+    const userAddingSleep = !hasSleepData && !userSkippedSleep && sleepQuality != null && sleepDuration != null;
+    if (userAddingSleep) {
+      entry.sleepQuality = sleepQuality;
+      entry.sleepDuration = sleepDuration;
+    }
 
     // Encrypt sensitive fields before sending to backend
     const userSub = user.sub;
