@@ -48,6 +48,14 @@ provider:
             - "ses:SendRawEmail"
           Resource:
             - "*"
+        - Effect: "Allow"
+          Action:
+            - "cognito-idp:AdminUpdateDeviceStatus"
+            - "cognito-idp:AdminListDevices"
+            - "cognito-idp:AdminGetDevice"
+            - "cognito-idp:AdminForgetDevice"
+          Resource:
+            - "arn:aws:cognito-idp:${self:provider.region}:${aws:accountId}:userpool/${self:provider.environment.USER_POOL_ID}"
 
   # environment vars still available to lambdas:
   environment:
@@ -205,6 +213,94 @@ functions:
               - Content-Type
               - Authorization
             allowCredentials: true
+
+  adminUpdateDeviceStatus:
+    handler: adminUpdateDeviceStatus.handler
+    package:
+      patterns:
+        - 'adminUpdateDeviceStatus.js'
+    events:
+      - http:
+          path: /device/remember
+          method: post
+          cors:
+            origins:
+              - 'https://myemtee.com'
+              - 'https://www.myemtee.com'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+  adminListDevices:
+    handler: adminListDevices.handler
+    package:
+      patterns:
+        - 'adminListDevices.js'
+    events:
+      - http:
+          path: /device/list
+          method: get
+          cors:
+            origins:
+              - 'https://myemtee.com'
+              - 'https://www.myemtee.com'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+  adminForgetDevice:
+    handler: adminForgetDevice.handler
+    package:
+      patterns:
+        - 'adminForgetDevice.js'
+    events:
+      - http:
+          path: /device/forget
+          method: post
+          cors:
+            origins:
+              - 'https://myemtee.com'
+              - 'https://www.myemtee.com'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
+  adminCheckDevice:
+    handler: adminCheckDevice.handler
+    package:
+      patterns:
+        - 'adminCheckDevice.js'
+    events:
+      - http:
+          path: /device/check
+          method: post
+          cors:
+            origins:
+              - 'https://myemtee.com'
+              - 'https://www.myemtee.com'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
 
   postConfirmation:
     handler: postConfirmation.handler

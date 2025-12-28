@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuthContext } from './AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import './AccountSettings.css';
+import { getStoredDeviceKey, isStoredDeviceRemembered, removeStoredDeviceKey, setStoredDeviceRemembered, isNeverRememberDevice, setNeverRememberDevice, setStoredDeviceKey, rememberDeviceBackend } from './lib/auth';
 
 function AccountSettings() {
   const { user, getIdToken, getAccessToken, refreshUserInfo, signOut } = useAuthContext();
@@ -45,6 +46,8 @@ function AccountSettings() {
       checkMFAStatus();
     } else if (activeTab === 'profile') {
       loadUserProfile();
+    } else if (activeTab === 'devices') {
+      loadDevices();
     }
   }, [activeTab]);
 
@@ -437,6 +440,150 @@ function AccountSettings() {
     }
   };
 
+  // Devices management
+  const [devices, setDevices] = useState([]);
+  const [loadingDevices, setLoadingDevices] = useState(false);
+  const [tokenInfo, setTokenInfo] = useState(null);
+  const [localDeviceKeyState, setLocalDeviceKeyState] = useState('-');
+  const [localDeviceRememberedState, setLocalDeviceRememberedState] = useState(false);
+  const [localNeverRememberState, setLocalNeverRememberState] = useState(false);
+  const [showRememberNowModal, setShowRememberNowModal] = useState(false);
+
+  const loadDevices = async () => {
+    setLoadingDevices(true);
+    try {
+      // Try ID token first, fall back to access token if needed
+      let token = null;
+      let used = null;
+      try {
+        token = await getIdToken();
+        used = token ? 'id' : null;
+      } catch (e) { token = null; }
+      if (!token) {
+        try { token = await getAccessToken(); used = token ? 'access' : null; } catch (e) { token = null; }
+      }
+
+      // Record token info for debugging (masked)
+      try {
+        if (token) {
+          const masked = token.substring(0, 8) + '…' + token.substring(token.length - 8);
+          // Try to decode JWT payload safely
+          let tokenUse = null;
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+            tokenUse = payload.token_use || payload.tokenUse || null;
+          } catch (e) { tokenUse = null; }
+          setTokenInfo({ which: used, masked, tokenUse });
+        } else {
+          setTokenInfo({ which: null, masked: null, tokenUse: null });
+        }
+      } catch (e) { setTokenInfo(null); }
+
+      if (!token) {
+        throw new Error('Not authenticated — missing token');
+      }
+
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/device/list`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      // Always attempt to parse JSON to surface backend messages
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        // If backend says unauthorized, suggest re-authentication
+        if (data.error === 'Unauthorized' || data.message === 'Unauthorized') {
+          showMessage('error', 'Unable to load devices (unauthorized). Try signing out and signing in again.');
+          console.error('Device list unauthorized response:', data);
+          setDevices([]);
+          return;
+        }
+        throw new Error(data.error || data.message || 'Failed to fetch devices');
+      }
+
+      // Successful response
+      setDevices(data.devices || []);
+    } catch (error) {
+      showMessage('error', error.message || 'Failed to load devices');
+    } finally {
+      setLoadingDevices(false);
+    }
+  };
+
+  // Load user info and device list when tab changes
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        if (!user) return;
+        const k = await getStoredDeviceKey(user.email);
+        const remembered = await isStoredDeviceRemembered(user.email);
+        const never = await isNeverRememberDevice(user.email);
+        if (!mounted) return;
+        setLocalDeviceKeyState(k || '-');
+        setLocalDeviceRememberedState(!!remembered);
+        setLocalNeverRememberState(!!never);
+      } catch (e) {
+        if (!mounted) return;
+        setLocalDeviceKeyState('-');
+        setLocalDeviceRememberedState(false);
+        setLocalNeverRememberState(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [user, devices]);
+
+  const handleForgetDevice = async (deviceKey) => {
+    if (!confirm('Forget this device? The user will need to re-authenticate on it.')) return;
+    setLoadingDevices(true);
+    try {
+      const token = await getIdToken();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/device/forget`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ deviceKey })
+      });
+      if (!res.ok) throw new Error('Failed to forget device');
+      showMessage('success', 'Device forgotten');
+      // Remove local deviceKey if matches
+      try {
+        await removeStoredDeviceKey(user.email);
+        await setStoredDeviceRemembered(user.email, false);
+      } catch (e) {}
+      await loadDevices();
+    } catch (error) {
+      showMessage('error', error.message || 'Failed to forget device');
+    } finally {
+      setLoadingDevices(false);
+    }
+  };
+
+  const handleToggleRemember = async (deviceKey, remember) => {
+    setLoadingDevices(true);
+    try {
+      const token = await getIdToken();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/device/remember`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ deviceKey, remember })
+      });
+      if (!res.ok) throw new Error('Failed to update device status');
+      showMessage('success', remember ? 'Device remembered' : 'Device set to not remembered');
+      try {
+        // If this deviceKey matches our locally stored key, update the remembered sentinel
+        const localKey = await getStoredDeviceKey(user.email);
+        if (localKey && localKey === deviceKey) {
+          await setStoredDeviceRemembered(user.email, remember);
+        }
+      } catch (e) {}
+      await loadDevices();
+    } catch (error) {
+      showMessage('error', error.message || 'Failed to update device');
+    } finally {
+      setLoadingDevices(false);
+    }
+  };
+
   // Get initial for profile avatar
   const getInitial = () => {
     const name = profileForm.name || user.name || user.email || '?';
@@ -458,9 +605,7 @@ function AccountSettings() {
 
     setIsDeleting(true);
     try {
-      const token = await getAccessToken();
-      console.log('Delete account - has token:', !!token);
-      console.log('Token preview:', token ? token.substring(0, 50) + '...' : 'NO TOKEN');
+      const token = await getIdToken();
       
       // First, delete all user data (S3 and DynamoDB) via Lambda
       const response = await fetch(
@@ -477,21 +622,25 @@ function AccountSettings() {
         let errorMessage = 'Failed to delete account data';
         try {
           const error = await response.json();
-          console.error('Lambda error response:', error);
           errorMessage = error.error || errorMessage;
-        } catch (e) {
-          console.error('Failed to parse error response:', e);
-        }
+        } catch (e) {}
         throw new Error(errorMessage);
       }
 
       const deleteResponse = await response.json();
-      console.log('Lambda success response:', deleteResponse);
 
       // Then delete the Cognito user directly from frontend
       await cognitoRequest('DeleteUser', {});
 
       // Clean up all auth state (IndexedDB, localStorage, sessionStorage)
+      // Remove any local device sentinels/keys before signing out
+        try {
+        await removeStoredDeviceKey(user.email);
+        await setStoredDeviceRemembered(user.email, false);
+        localStorage.removeItem('new_device_metadata');
+        localStorage.removeItem('temp_username');
+      } catch (e) {}
+
       await signOut();
       
       // Show success message
@@ -539,6 +688,12 @@ function AccountSettings() {
           onClick={() => setActiveTab('mfa')}
         >
           Multi-Factor Authentication
+        </button>
+        <button
+          className={activeTab === 'devices' ? 'active' : ''}
+          onClick={() => setActiveTab('devices')}
+        >
+          Devices
         </button>
         <button
           className={activeTab === 'delete' ? 'active' : ''}
@@ -708,6 +863,130 @@ function AccountSettings() {
               <button onClick={disableMFA} disabled={loading} className="danger">
                 {loading ? 'Disabling...' : 'Disable MFA'}
               </button>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'devices' && (
+          <div className="devices-section">
+            <h3>Remembered Devices</h3>
+            <p>Manage devices associated with your account. You can forget devices or toggle their remembered status.</p>
+            <div style={{ marginTop: '0.5rem', marginBottom: '0.75rem', padding: '0.5rem', background: '#f7fafc', borderRadius: '6px', fontSize: '0.9rem', color: '#333' }}>
+              {/* Never-remember flag controls */}
+              {localNeverRememberState ? (
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <div style={{ color: '#b45309' }}>Remember prompts are disabled for this account.</div>
+                  <button
+                    className="btn-primary"
+                    onClick={async () => {
+                      try {
+                        await setNeverRememberDevice(user.email, false);
+                        setLocalNeverRememberState(false);
+                        showMessage('success', 'Remember prompts re-enabled. You will be asked after next MFA.');
+                        // Offer to remember current local device now if we have a key
+                        if (localDeviceKeyState && localDeviceKeyState !== '-') {
+                          setShowRememberNowModal(true);
+                        }
+                      } catch (e) {
+                        console.error('Failed to clear never-remember flag', e);
+                        showMessage('error', 'Failed to re-enable remember prompts');
+                      }
+                    }}
+                  >
+                    Re-enable remember prompts
+                  </button>
+                </div>
+              ) : (
+                <div style={{ color: '#047857' }}>Remember prompts are enabled for this account.</div>
+              )}
+            </div>
+            {/* Modal: remember current local device now (shown after re-enabling prompts) */}
+            {showRememberNowModal && (
+              <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                <h4>Remember this device now?</h4>
+                {localDeviceKeyState && localDeviceKeyState !== '-' ? (
+                  <div>
+                    <p style={{ marginTop: 0 }}>We detected a local device key for this browser. You can remember it now so it won't prompt for MFA on next sign in.</p>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button className="btn-primary" onClick={async () => {
+                        try {
+                          setLoadingDevices(true);
+                          const resp = await rememberDeviceBackend(localDeviceKeyState, true);
+                          // Verify server-side
+                          const list = await listDevicesBackend(50);
+                          const found = (list.devices || []).find(d => d.DeviceKey === localDeviceKeyState);
+                          if (found && found.DeviceRememberedStatus === 'remembered') {
+                            await setStoredDeviceRemembered(user.email, true);
+                            showMessage('success', 'Device remembered');
+                            setLocalDeviceRememberedState(true);
+                            setShowRememberNowModal(false);
+                          } else {
+                            console.warn('Remember OK but device not found in list', resp, list);
+                            showMessage('error', 'Server did not confirm device remembered. Please try again.');
+                          }
+                        } catch (e) {
+                          console.error('Failed to remember device from settings', e);
+                          showMessage('error', 'Failed to remember device');
+                        } finally { setLoadingDevices(false); }
+                      }}>Remember</button>
+
+                      <button className="btn-secondary" onClick={() => setShowRememberNowModal(false)}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p style={{ marginTop: 0 }}>No local device key found for this browser. Sign out and sign in again to generate one, then you'll be able to remember it.</p>
+                    <button className="btn-secondary" onClick={() => setShowRememberNowModal(false)}>Close</button>
+                  </div>
+                )}
+              </div>
+            )}
+            {loadingDevices ? (
+              <p>Loading devices...</p>
+            ) : (
+              <div>
+                {devices.length === 0 ? (
+                  <p>No devices found.</p>
+                ) : (
+                  <table className="devices-table">
+                    <thead>
+                      <tr>
+                        <th>Device Key</th>
+                        <th>Created</th>
+                        <th>Last Authenticated</th>
+                        <th>Remembered</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {devices.map((d) => {
+                        const attrs = d?.DeviceAttributes || d?.Attributes || [];
+                        const friendly = (attrs.find?.(a => a.Name === 'name' || a.Name === 'device_name' || a.Name === 'friendly_name') || {}).Value;
+                        const shortKey = d.DeviceKey ? (d.DeviceKey.length > 28 ? d.DeviceKey.slice(0, 16) + '...' + d.DeviceKey.slice(-8) : d.DeviceKey) : '-';
+                        return (
+                          <tr key={d.DeviceKey}>
+                            <td style={{ maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <div style={{ fontWeight: 600 }}>{friendly || shortKey}</div>
+                              <div style={{ color: '#666', fontSize: '0.85rem' }}>{d.DeviceKey}</div>
+                            </td>
+                            <td>{d.DeviceCreateDate ? new Date(d.DeviceCreateDate).toLocaleString() : '-'}</td>
+                            <td>{d.DeviceLastAuthenticatedDate ? new Date(d.DeviceLastAuthenticatedDate).toLocaleString() : '-'}</td>
+                            <td>{d.DeviceRememberedStatus || 'n/a'}</td>
+                            <td>
+                              <button className={"device-action-btn " + (d.DeviceRememberedStatus === 'remembered' ? '' : 'primary')} onClick={() => handleToggleRemember(d.DeviceKey, d.DeviceRememberedStatus !== 'remembered')} disabled={loadingDevices}>
+                                {d.DeviceRememberedStatus === 'remembered' ? 'Unremember' : 'Remember'}
+                              </button>
+                              <button className="device-action-btn danger" onClick={() => handleForgetDevice(d.DeviceKey)} disabled={loadingDevices} style={{ marginLeft: '0.5rem' }}>
+                                Forget
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             )}
           </div>
         )}

@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuthContext } from "./AuthContext";
 
 export default function Header() {
   const { user, signOut } = useAuthContext();
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -33,6 +34,8 @@ export default function Header() {
   const handleSignOut = async () => {
     setMenuOpen(false);
     await signOut();
+    // Ensure we're back at the app root after signing out
+    try { navigate('/'); } catch (e) {}
   };
 
   return (

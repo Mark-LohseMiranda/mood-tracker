@@ -1,6 +1,6 @@
 // src/Login.jsx
 import { useState, useRef, useEffect } from 'react';
-import { signIn, verifyMFA } from './lib/auth';
+import { signIn, verifyMFA, rememberDeviceBackend, setStoredDeviceKey, setStoredDeviceRemembered, isStoredDeviceRemembered, isNeverRememberDevice, setNeverRememberDevice, listDevicesBackend, confirmDeviceAndRemember } from './lib/auth';
 import './Login.css';
 
 export default function Login({ onLoginSuccess, onSwitchToSignUp, onSwitchToForgotPassword }) {
@@ -9,59 +9,37 @@ export default function Login({ onLoginSuccess, onSwitchToSignUp, onSwitchToForg
   const [mfaCode, setMfaCode] = useState('');
   const [showMFA, setShowMFA] = useState(false);
   const [mfaSession, setMfaSession] = useState(null);
+  const [cognitoUser, setCognitoUser] = useState(null);
+  const [newDeviceMetadata, setNewDeviceMetadata] = useState(null);
+  const [showRememberChoice, setShowRememberChoice] = useState(false);
+  const [rememberChoiceProcessing, setRememberChoiceProcessing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [preventAutoSubmit, setPreventAutoSubmit] = useState(false);
+  const [isAlreadyRemembered, setIsAlreadyRemembered] = useState(false);
   const mfaInputRef = useRef(null);
   const formRef = useRef(null);
 
-  // Auto-submit when 6 digits entered for MFA
+  // Check if device is already remembered when remember choice screen shows
   useEffect(() => {
-    if (mfaCode.length === 6 && mfaSession) {
-      handleMFASubmit(new Event('submit'));
+    if (showRememberChoice) {
+      isStoredDeviceRemembered(email).then(setIsAlreadyRemembered);
     }
-  }, [mfaCode]);
+  }, [showRememberChoice, email]);
 
-  // Detect autofill and auto-submit after a brief delay
+  // Auto-submit when 6 digits entered for MFA
+  // Removed auto-submit when 6 digits entered so users can
+  // check the "Remember this device" box before verifying.
+
+  // Detect autofill for UX but DO NOT auto-submit the form.
+  // Previously the form auto-submitted when password managers populated
+  // credentials which prevented users from checking the "Remember this device"
+  // option on the MFA screen. To avoid that, we intentionally do nothing
+  // here and let users explicitly press Sign In.
   useEffect(() => {
-    const form = formRef.current;
-    if (!form || showMFA || preventAutoSubmit) return;
-
-    let autoFillTimer;
-    let changeTimer;
-    
-    const handleAnimationStart = (e) => {
-      // Chrome/Edge autofill detection
-      if (e.animationName === 'onAutoFillStart') {
-        autoFillTimer = setTimeout(() => {
-          if (email && password && !preventAutoSubmit) {
-            form.requestSubmit();
-          }
-        }, 500);
-      }
-    };
-
-    // iOS Safari autofill detection - uses input/change events
-    const handleInputChange = () => {
-      if (changeTimer) clearTimeout(changeTimer);
-      changeTimer = setTimeout(() => {
-        if (email && password && !preventAutoSubmit && !loading) {
-          form.requestSubmit();
-        }
-      }, 800); // Longer delay for iOS to ensure both fields populated
-    };
-
-    form.addEventListener('animationstart', handleAnimationStart);
-    form.addEventListener('input', handleInputChange);
-    form.addEventListener('change', handleInputChange);
-
-    return () => {
-      form.removeEventListener('animationstart', handleAnimationStart);
-      form.removeEventListener('input', handleInputChange);
-      form.removeEventListener('change', handleInputChange);
-      if (autoFillTimer) clearTimeout(autoFillTimer);
-      if (changeTimer) clearTimeout(changeTimer);
-    };
+    // No-op: keep the effect dependencies so dev tooling notices field changes,
+    // but do not attach listeners that would trigger `requestSubmit()`.
+    return undefined;
   }, [email, password, showMFA, preventAutoSubmit, loading]);
 
   // Auto-focus and trigger 1Password autofill on MFA screen
@@ -91,8 +69,16 @@ export default function Login({ onLoginSuccess, onSwitchToSignUp, onSwitchToForg
       
       const result = await signIn(email, password);
 
+      if (result?.newDeviceMetadata) {
+        try {
+          setNewDeviceMetadata(result.newDeviceMetadata);
+          localStorage.setItem('new_device_metadata', JSON.stringify(result.newDeviceMetadata));
+        } catch (e) {}
+      }
+
       if (result.challengeName === 'SOFTWARE_TOKEN_MFA') {
         setMfaSession(result.session);
+        setCognitoUser(result.cognitoUser); // Store CognitoUser for MFA
         setShowMFA(true);
       } else if (result.success) {
         onLoginSuccess();
@@ -110,9 +96,37 @@ export default function Login({ onLoginSuccess, onSwitchToSignUp, onSwitchToForg
     setLoading(true);
 
     try {
-      const result = await verifyMFA(mfaSession, mfaCode);
+      const result = await verifyMFA(cognitoUser, mfaCode);
       if (result.success) {
-        onLoginSuccess();
+        if (result.newDeviceMetadata) {
+          try {
+            setNewDeviceMetadata(result.newDeviceMetadata);
+            localStorage.setItem('new_device_metadata', JSON.stringify(result.newDeviceMetadata));
+          } catch (e) {}
+          
+          // After successful MFA, show remember-device choice unless user
+          // previously selected 'never remember'. We check IndexedDB for that.
+          try {
+            const never = await isNeverRememberDevice(email);
+            if (never) {
+              localStorage.removeItem('new_device_metadata');
+              localStorage.removeItem('cognito_username');
+              onLoginSuccess();
+              return;
+            }
+          } catch (e) {
+            console.error('Failed checking never-remember flag', e);
+          }
+
+          // Show choice UI to let user pick Remember / Never remember
+          // Hide the MFA UI so the choice appears immediately.
+          setError('');
+          setShowMFA(false);
+          setShowRememberChoice(true);
+        } else {
+          // No new device metadata, just login
+          onLoginSuccess();
+        }
       }
     } catch (err) {
       setError(err.message || 'Invalid MFA code. Please try again.');
@@ -163,32 +177,119 @@ export default function Login({ onLoginSuccess, onSwitchToSignUp, onSwitchToForg
                 }}
               />
               <small style={{ color: '#718096', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block' }}>
-                💡 Code auto-submits when complete
+                Enter the 6-digit code, then press Verify
               </small>
+              {/* Remember-device choice is shown after successful MFA, not on the code entry form. */}
+
             </div>
 
-            <button type="submit" className="btn-primary" disabled={loading || mfaCode.length !== 6}>
-              {loading ? 'Verifying...' : 'Verify'}
+            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <button type="submit" className="btn-primary" disabled={loading}>
+                {loading ? 'Verifying...' : 'Verify'}
+              </button>
+
+              <button
+                type="button"
+                className="btn-link"
+                onClick={() => {
+                  setShowMFA(false);
+                  setMfaCode('');
+                  setMfaSession(null);
+                  setEmail('');
+                  setPassword('');
+                  setError('');
+                  setPreventAutoSubmit(true);
+                  // Re-enable auto-submit after a delay
+                  setTimeout(() => setPreventAutoSubmit(false), 1000);
+                }}
+              >
+                Back to login
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Remember device choice screen shown after successful MFA
+  if (showRememberChoice) {
+    const stored = localStorage.getItem('new_device_metadata');
+    const meta = stored ? JSON.parse(stored) : newDeviceMetadata;
+    
+    return (
+      <div className="auth-container">
+        <div className="auth-card">
+          <h2>Remember This Device?</h2>
+          <p>If you choose "Remember", you won't be asked for MFA on this device. Choose "Never" to never remember this device.</p>
+          {isAlreadyRemembered && (
+            <div style={{ 
+              backgroundColor: '#f0f0f0', 
+              border: '1px solid #ccc', 
+              padding: '0.75rem', 
+              borderRadius: '4px', 
+              marginTop: '0.75rem',
+              fontSize: '0.9rem',
+              color: '#666'
+            }}>
+              <strong>Note:</strong> This device was previously remembered but wasn't recognized. Choosing "Remember" will update its status.
+            </div>
+          )}
+          {error && <div className="error-message" style={{ marginTop: '0.75rem' }}>{error}</div>}
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+            <button
+              className="btn-primary"
+              disabled={rememberChoiceProcessing}
+              onClick={async () => {
+                setRememberChoiceProcessing(true);
+                setError('');
+                try {
+                  // Store device credentials with email
+                  if (meta?.DeviceKey && meta?.DeviceGroupKey) {
+                    // Confirm and remember device directly with Cognito using AccessToken
+                    // This stores deviceKey, deviceSecret, and deviceGroupKey internally with email
+                    await confirmDeviceAndRemember(meta, email, 'web');
+                    await setStoredDeviceRemembered(email, true);
+                  } else if (meta?.DeviceKey) {
+                    // Fallback: try admin endpoint if metadata is incomplete
+                    await rememberDeviceBackend(meta.DeviceKey, true);
+                    await setStoredDeviceKey(email, meta.DeviceKey);
+                    await setStoredDeviceRemembered(email, true);
+                  } else {
+                    setError('Missing device metadata; please sign out and sign in again.');
+                    setRememberChoiceProcessing(false);
+                    return;
+                  }
+                  try { localStorage.removeItem('new_device_metadata'); } catch (e) {}
+                  setRememberChoiceProcessing(false);
+                  onLoginSuccess();
+                } catch (e) {
+                  console.error('Failed to remember device after MFA', e);
+                  setError('Failed to remember device. Please try again.');
+                  setRememberChoiceProcessing(false);
+                }
+              }}
+            >
+              Remember
             </button>
 
             <button
-              type="button"
-              className="btn-link"
-              onClick={() => {
-                setShowMFA(false);
-                setMfaCode('');
-                setMfaSession(null);
-                setEmail('');
-                setPassword('');
+              className="btn-secondary"
+              disabled={rememberChoiceProcessing}
+              onClick={async () => {
+                setRememberChoiceProcessing(true);
                 setError('');
-                setPreventAutoSubmit(true);
-                // Re-enable auto-submit after a delay
-                setTimeout(() => setPreventAutoSubmit(false), 1000);
+                try {
+                  await setNeverRememberDevice(email, true);
+                } catch (e) { console.error('Failed setting never-remember', e); }
+                try { localStorage.removeItem('new_device_metadata'); } catch (e) {}
+                setRememberChoiceProcessing(false);
+                onLoginSuccess();
               }}
             >
-              Back to login
+              Never remember this device
             </button>
-          </form>
+          </div>
         </div>
       </div>
     );
@@ -232,6 +333,8 @@ export default function Login({ onLoginSuccess, onSwitchToSignUp, onSwitchToForg
               required
             />
           </div>
+
+          {/* No remember-device option on username/password screen by design */}
 
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading ? 'Signing in...' : 'Sign In'}

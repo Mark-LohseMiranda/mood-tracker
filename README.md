@@ -66,13 +66,22 @@
   - Email management
 - **Password Management**: Change password securely
 - **Multi-Factor Authentication (MFA)**: Optional TOTP-based MFA setup
+- **Device Remember**: Securely remember devices to skip MFA on subsequent logins
+  - Choose to remember or never remember each device after MFA
+  - Device management in account settings (view, remember, or forget devices)
+  - "Never remember" preference persists across sessions
+  - Graceful fallback if device is no longer recognized by Cognito
 - **Account Deletion**: Complete data removal (S3, DynamoDB, Cognito)
 - **Signup Notifications**: Automatic email alerts to admin when new users register (via SES)
 
 ### 🔒 Security & Privacy
 - **End-to-End Encryption**: Sensitive data (notes, feelings, consumption) encrypted client-side before storage
 - **Zero-Knowledge Privacy**: Encryption keys never leave your browser - even developers can't read your private data
-- **AWS Cognito Authentication**: Direct SDK integration with USER_PASSWORD_AUTH flow
+- **AWS Cognito Authentication**: Direct SDK integration with USER_PASSWORD_AUTH flow and device tracking
+- **Device Authentication**: Seamless device recognition with optional MFA bypass
+  - Uses amazon-cognito-identity-js CognitoUser class for transparent device auth
+  - Device credentials managed automatically by SDK
+  - Device key stored securely in IndexedDB
 - **Multi-Layer Encryption**: Client-side AES-256-GCM + AWS encryption at rest
 - **HTTPS Only**: SSL/TLS for all communications
 - **CORS Protection**: Strict origin policies
@@ -183,10 +192,12 @@
 
 1. **User Sign-In**:
    - User enters credentials on custom login page
-   - Frontend calls Cognito InitiateAuth API directly
-   - If MFA enabled, user enters TOTP code → RespondToAuthChallenge
+   - Frontend calls Cognito via CognitoUser.authenticateUser()
+   - If MFA enabled, user enters TOTP code
+   - After successful MFA, user can choose to remember device
+   - If device previously remembered, Cognito handles device auth automatically (skips MFA)
    - Cognito returns tokens (access, ID, refresh)
-   - Tokens stored in localStorage with automatic refresh
+   - Tokens stored in IndexedDB with automatic refresh
 
 2. **Creating a Mood Entry**:
    - User fills out form → Frontend sends POST with access token
@@ -303,6 +314,10 @@ mood-tracker/
 │   ├── 📄 getEntriesForDay.js       # GET /entries/day?date=YYYY-MM-DD (filters by localDate)
 │   ├── 📄 getProfilePictureUploadUrl.js  # GET /profile/picture-upload-url
 │   ├── 📄 deleteProfilePicture.js   # DELETE /profile/picture
+│   ├── 📄 adminListDevices.js       # GET /device/list (list user's remembered devices)
+│   ├── 📄 adminCheckDevice.js       # POST /device/check (verify device remembered status)
+│   ├── 📄 adminUpdateDeviceStatus.js # POST /device/remember (toggle device remember status)
+│   ├── 📄 adminForgetDevice.js      # POST /device/forget (remove device from user)
 │   ├── 📄 deleteAccount.js          # POST /account
 │   ├── 📄 postConfirmation.js       # Cognito trigger (sends signup emails)
 │   ├── 📄 package.json              # Lambda dependencies
@@ -398,8 +413,8 @@ npx serverless deploy
 ```
 
 This deploys:
-- 8 Lambda functions (individually packaged)
-  - 7 API endpoints
+- 12 Lambda functions (individually packaged)
+  - 11 API endpoints (mood tracking, profile, device management, account)
   - 1 Cognito trigger (postConfirmation)
 - API Gateway REST API
 - DynamoDB table
@@ -442,6 +457,11 @@ All endpoints (except `POST /account`) require a valid JWT access token in the `
 ```
 Authorization: Bearer <access_token>
 ```
+
+The token is validated by the **API Gateway Cognito authorizer**, which extracts the user's identity from the JWT claims. This ensures:
+- Only authenticated users can access their data
+- Device operations are scoped to the authenticated user (no cross-user access)
+- All requests are securely authenticated before reaching Lambda functions
 
 ### Endpoints
 
@@ -516,7 +536,67 @@ Authorization: Bearer <token>
 Response: 200 OK
 ```
 
-#### 🗑️ Account Deletion
+#### � Device Management
+
+**List User Devices**
+```http
+GET /device/list?limit=50
+Authorization: Bearer <token>
+
+Response: {
+  "devices": [
+    {
+      "DeviceKey": "device-key-string",
+      "DeviceAttributes": {
+        "device_name": "Chrome on MacOS",
+        "device_status": "confirmed"
+      },
+      "DeviceCreateDate": 1703000000,
+      "DeviceLastModifiedDate": 1703100000,
+      "DeviceRememberedStatus": "remembered" | "not_remembered"
+    }
+  ]
+}
+```
+
+**Check Device Status**
+```http
+POST /device/check
+Authorization: Bearer <token>
+
+{
+  "deviceKey": "device-key-string"
+}
+
+Response: { "remembered": true | false }
+```
+
+**Update Device Remember Status**
+```http
+POST /device/remember
+Authorization: Bearer <token>
+
+{
+  "deviceKey": "device-key-string",
+  "remember": true | false
+}
+
+Response: { "success": true }
+```
+
+**Forget Device**
+```http
+POST /device/forget
+Authorization: Bearer <token>
+
+{
+  "deviceKey": "device-key-string"
+}
+
+Response: { "success": true }
+```
+
+#### �🗑️ Account Deletion
 
 **Delete Account**
 ```http
@@ -532,16 +612,22 @@ Response: { message: "Account data deleted successfully" }
 ## 🔐 Security
 
 ### Authentication & Authorization
-- **Custom Cognito Integration**: Direct AWS SDK calls with USER_PASSWORD_AUTH flow
+- **Custom Cognito Integration**: Direct AWS SDK calls with USER_PASSWORD_AUTH flow using amazon-cognito-identity-js
 - **Password Manager Support**: Proper autocomplete attributes for 1Password, LastPass, Bitwarden
 - **JWT Tokens**: Short-lived access tokens (60 minutes), long-lived refresh tokens (30 days)
 - **Automatic Token Refresh**: Tokens refreshed before expiration for seamless 30-day sessions
 - **Token Validation**: API Gateway Cognito authorizer validates JWTs
-- **Persistent Storage**: IndexedDB for auth tokens (survives PWA restarts on iOS/Android/macOS)
+- **Device Tracking**: Cognito device tracking enabled (user opt-in mode)
+  - Devices remembered securely via CognitoUser.setDeviceStatusRemembered()
+  - Device credentials stored in IndexedDB with email as key
+  - Subsequent logins automatically authenticate with device credentials (DEVICE_SRP_AUTH)
+  - Users can view, remember, or forget devices in Account Settings
+- **Persistent Storage**: IndexedDB for auth tokens and device tracking (survives PWA restarts on iOS/Android/macOS)
   - Access, ID, and refresh tokens stored in IndexedDB for PWA persistence
+  - Device keys stored in IndexedDB for device tracking
   - Automatic cleanup on sign out
   - Fallback to localStorage for temporary data (temp_username during MFA)
-- **MFA Support**: TOTP-based multi-factor authentication preserved from hosted UI
+- **MFA Support**: TOTP-based multi-factor authentication with device remember flow
 
 ### Custom Authentication Features
 - **Landing Page**: Marketing page before authentication with app overview

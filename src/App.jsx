@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuthContext } from "./AuthContext";
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Routes, Route, Navigate } from "react-router-dom";
 import FeelingSelector from "./FeelingSelector";
 import DailyQuestions from "./DailyQuestions";
@@ -21,6 +22,16 @@ import "./App.css";
 function App() {
   const { isAuthenticated, isLoading, checkAuthStatus } = useAuthContext();
   const [authView, setAuthView] = useState('landing'); // 'landing', 'login', 'signup', 'forgot-password'
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // If user landed on a deep route while unauthenticated, reset URL to '/'.
+  // Must run unconditionally (hooks cannot be called conditionally).
+  useEffect(() => {
+    if (!isAuthenticated && location.pathname !== '/') {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, location.pathname, navigate]);
 
   if (isLoading) {
     return (
@@ -39,6 +50,7 @@ function App() {
 
   // If not signed in, show auth UI
   if (!isAuthenticated) {
+
     const handleLoginSuccess = () => {
       checkAuthStatus();
     };

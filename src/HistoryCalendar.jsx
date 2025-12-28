@@ -32,7 +32,7 @@ function generateCalendarDates(year, month) {
 }
 
 export default function HistoryCalendar() {
-  const { user, getIdToken } = useAuthContext();
+  const { user, getAccessToken, getIdToken } = useAuthContext();
 
   // Determine "today" once, for default values
   const today = new Date();
@@ -125,6 +125,18 @@ useEffect(() => {
         `${import.meta.env.VITE_API_URL}/entries/history?year=${currentYear}&month=${String(currentMonth).padStart(2, '0')}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
+      // Diagnostic logging
+      try {
+        const masked = token ? (token.substring(0,8) + '…' + token.substring(token.length-8)) : null;
+        let tokenUse = null;
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+          tokenUse = payload.token_use || payload.tokenUse || null;
+        } catch (e) {}
+        console.info('HistoryCalendar: /entries/history token masked=', masked, 'token_use=', tokenUse, 'status=', resp.status);
+      } catch(e) {}
+
       if (resp.ok) {
         const data = await resp.json();
         const monthMap = {};
@@ -168,6 +180,11 @@ useEffect(() => {
         setCache(newCache);
         localStorage.setItem('historyCache', JSON.stringify(newCache));
       } else {
+        // Log response body for debugging unauthorized cases
+        try {
+          const body = await resp.text();
+          console.error('HistoryCalendar: entries/history failed status=', resp.status, 'body=', body);
+        } catch (e) {}
         // no entries → cache an empty object
         setAverages({});
         setEntryExists(false);
