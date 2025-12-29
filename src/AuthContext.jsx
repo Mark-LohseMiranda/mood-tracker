@@ -24,7 +24,14 @@ export function AuthContextProvider({ children }) {
   const checkAuthStatus = async () => {
     setIsLoading(true);
     try {
-      const authenticated = await checkAuth();
+      let authenticated = await checkAuth();
+      if (!authenticated) {
+        // Attempt to refresh session if access token expired
+        try {
+          await refreshUser();
+          authenticated = await checkAuth();
+        } catch (e) {}
+      }
       if (authenticated) {
         const currentUser = await getCurrentUser();
         if (currentUser) {

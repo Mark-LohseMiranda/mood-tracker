@@ -521,7 +521,19 @@ export async function isAuthenticated() {
   if (!accessToken) return false;
 
   const tokenPayload = parseJwt(accessToken);
-  return tokenPayload.exp * 1000 > Date.now();
+  if (tokenPayload.exp * 1000 > Date.now()) {
+    return true;
+  }
+  // Try refreshing session if the access token is expired but a refresh token exists
+  try {
+    await refreshSession();
+    const refreshed = await getItem(ACCESS_TOKEN_KEY);
+    if (!refreshed) return false;
+    const payload = parseJwt(refreshed);
+    return payload.exp * 1000 > Date.now();
+  } catch (e) {
+    return false;
+  }
 }
 
 /**

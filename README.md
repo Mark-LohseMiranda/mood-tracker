@@ -89,8 +89,8 @@
 - **Multi-Layer Encryption**: Client-side AES-256-GCM + AWS encryption at rest
 - **HTTPS Only**: SSL/TLS for all communications
 - **CORS Protection**: Strict origin policies
-- **Token-based Authorization**: JWT access/ID tokens with automatic refresh
-  - Access/ID tokens automatically refreshed when expired
+- **Token-based Authorization**: ID token for REST API Gateway (Cognito user pool authorizer); access token only for direct Cognito service calls
+  - Access/ID tokens automatically refreshed via REFRESH_TOKEN_AUTH when expired
   - 30-day refresh token for extended sessions
   - Smart error handling - only logs out on actual token expiration, not network errors
 - **Legal Compliance**: Privacy Policy, Terms of Service, GDPR-ready
@@ -210,7 +210,7 @@
      - **Yes**: Shows sleep quality/duration form alongside mood/consumption form
      - **No**: Hides sleep form, user logs mood without sleep data
    - If sleep data already exists for today: No modal, sleep form hidden
-   - User fills out form (mood, optionally sleep, consumption, notes) → Frontend sends POST with access token
+      - User fills out form (mood, optionally sleep, consumption, notes) → Frontend sends POST with ID token (REST API user pool authorizer)
    - API Gateway validates token with Cognito authorizer
    - Lambda validates localDate is provided and checks for existing sleep data on the same local date
    - If user tries to add sleep when sleep already exists: Returns 400 error
