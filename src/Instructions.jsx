@@ -324,7 +324,7 @@ function Instructions() {
       <section id="help" className="instruction-section">
         <h2>📞 Need Help?</h2>
         <p>If you have questions or encounter issues, please contact us at:</p>
-        <p><a href="mailto:mark@guardiancodewebservices.com">mark@guardiancodewebservices.com</a></p>
+        <p><a href="mailto:info@myemtee.com">info@myemtee.com</a></p>
       </section>
         </div>
       </div>

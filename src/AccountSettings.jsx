@@ -581,14 +581,18 @@ function AccountSettings() {
 
     setIsDeleting(true);
     try {
-      const token = await getIdToken();
+      // Backend deleteAccount Lambda validates the access token via Cognito GetUser
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        throw new Error('Not authenticated');
+      }
       
       // First, delete all user data (S3 and DynamoDB) via Lambda
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/account`,
         {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${accessToken}` }
         }
       );
       
