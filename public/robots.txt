@@ -3,7 +3,7 @@ User-agent: *
 Allow: /
 Disallow: /settings
 Disallow: /questions
-Disallow: /history
+Disallow: /instructions
 
 # Sitemap location
 Sitemap: https://myemtee.com/sitemap.xml

@@ -263,3 +263,66 @@ html.dark .policies-menu a:hover {
   font-weight: 600;
   text-transform: uppercase;
 }
+
+.share-button {
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.share-button:hover {
+  transform: scale(1.2);
+  filter: drop-shadow(0 2px 4px rgba(102, 126, 234, 0.3));
+}
+
+.share-button:active {
+  transform: scale(0.95);
+}
+
+/* Floating Share Button */
+.floating-share-button {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  font-size: 1.75rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 900;
+  transition: all 0.3s ease;
+}
+
+.floating-share-button:hover {
+  transform: scale(1.1) translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.floating-share-button:active {
+  transform: scale(0.95);
+}
+
+@media (max-width: 640px) {
+  .floating-share-button {
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 48px;
+    height: 48px;
+    font-size: 1.5rem;
+  }
+}
+
+/* Dark mode */
+html.dark .floating-share-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+}
+
+html.dark .floating-share-button:hover {
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}

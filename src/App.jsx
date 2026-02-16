@@ -13,6 +13,7 @@ import CookiePolicy from "./CookiePolicy";
 import Instructions from "./Instructions";
 import Header from "./Header";
 import Footer from "./Footer";
+import ShareButton from "./ShareButton";
 import LandingPage from "./LandingPage";
 import Login from "./Login";
 import SignUp from "./SignUp";
@@ -71,6 +72,7 @@ function App() {
             onSignUp={() => setAuthView('signup')}
           />
           <Footer />
+          <ShareButton />
         </>
       );
     }
@@ -83,6 +85,7 @@ function App() {
             onSwitchToLogin={() => setAuthView('login')}
           />
           <Footer />
+          <ShareButton />
         </>
       );
     }
@@ -95,6 +98,7 @@ function App() {
             onSwitchToLogin={() => setAuthView('login')}
           />
           <Footer />
+          <ShareButton />
         </>
       );
     }
@@ -107,6 +111,7 @@ function App() {
           onSwitchToForgotPassword={() => setAuthView('forgot-password')}
         />
         <Footer />
+        <ShareButton />
       </>
     );
   }
@@ -137,6 +142,7 @@ function App() {
       </Routes>
 
       <Footer />
+      <ShareButton />
     </>
   );
 }
