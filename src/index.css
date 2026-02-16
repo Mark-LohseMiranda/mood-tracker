@@ -39,6 +39,20 @@ html, body {
   background-size: cover;
   background-attachment: fixed;
 
+  /* CSS Custom Properties for components */
+  --primary-color: #0070f3;
+  --text-primary: #213547;
+  --text-secondary: #64748b;
+  --card-bg: #ffffff;
+  --bg-primary: #f9f9f9;
+  --bg-secondary: #f1f5f9;
+  --border-color: #e2e8f0;
+  --button-bg: #f9f9f9;
+  --button-hover-bg: #f1f5f9;
+  --input-bg: #ffffff;
+  --success-bg: #dcfce7;
+  --success-text: #166534;
+
   /* Make sure the "dark" color-scheme is declared too: */
   color-scheme: light dark;
 }
@@ -51,6 +65,20 @@ html.dark :root {
   background-repeat: no-repeat;
   background-size: cover;
   background-attachment: fixed;
+
+  /* Dark mode CSS custom properties */
+  --primary-color: #3b82f6;
+  --text-primary: rgba(255, 255, 255, 0.87);
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --card-bg: #1e1e1e;
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2a2a2a;
+  --border-color: #404040;
+  --button-bg: #1a1a1a;
+  --button-hover-bg: #2a2a2a;
+  --input-bg: #1e1e1e;
+  --success-bg: #064e3b;
+  --success-text: #86efac;
 }
 
 /* Links */
@@ -133,6 +161,20 @@ body {
     background-repeat: no-repeat;
     background-size: cover;
     background-attachment: fixed;
+
+    /* Dark mode CSS custom properties */
+    --primary-color: #3b82f6;
+    --text-primary: rgba(255, 255, 255, 0.87);
+    --text-secondary: rgba(255, 255, 255, 0.6);
+    --card-bg: #1e1e1e;
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2a2a2a;
+    --border-color: #404040;
+    --button-bg: #1a1a1a;
+    --button-hover-bg: #2a2a2a;
+    --input-bg: #1e1e1e;
+    --success-bg: #064e3b;
+    --success-text: #86efac;
   }
   a {
     color: #93a9ff; /* lighter link color in dark mode */

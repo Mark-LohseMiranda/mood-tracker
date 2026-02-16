@@ -576,3 +576,78 @@ function parseJwt(token) {
     return { exp: 0 };
   }
 }
+
+// Device remember functions (localStorage-based)
+export function getStoredDeviceKey(email) {
+  try {
+    return localStorage.getItem(`device_key_${email}`);
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredDeviceKey(email, deviceKey) {
+  try {
+    localStorage.setItem(`device_key_${email}`, deviceKey);
+  } catch (e) {
+    console.error('Failed to store device key:', e);
+  }
+}
+
+export function removeStoredDeviceKey(email) {
+  try {
+    localStorage.removeItem(`device_key_${email}`);
+  } catch (e) {
+    console.error('Failed to remove device key:', e);
+  }
+}
+
+export function isStoredDeviceRemembered(email) {
+  try {
+    return localStorage.getItem(`device_remembered_${email}`) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function setStoredDeviceRemembered(email, remembered) {
+  try {
+    localStorage.setItem(`device_remembered_${email}`, remembered ? 'true' : 'false');
+  } catch (e) {
+    console.error('Failed to set device remembered:', e);
+  }
+}
+
+export function isNeverRememberDevice(email) {
+  try {
+    return localStorage.getItem(`never_remember_${email}`) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function setNeverRememberDevice(email, never) {
+  try {
+    localStorage.setItem(`never_remember_${email}`, never ? 'true' : 'false');
+  } catch (e) {
+    console.error('Failed to set never remember device:', e);
+  }
+}
+
+export async function rememberDeviceBackend(deviceKey, remember) {
+  // Stub: Backend API call to remember device would go here
+  console.log('rememberDeviceBackend called:', { deviceKey, remember });
+  return { success: true };
+}
+
+export async function listDevicesBackend() {
+  // Stub: Backend API call to list devices would go here
+  console.log('listDevicesBackend called');
+  return [];
+}
+
+export async function confirmDeviceAndRemember(metadata, email, deviceName) {
+  // Stub: Device confirmation logic would go here
+  console.log('confirmDeviceAndRemember called:', { metadata, email, deviceName });
+  return { success: true };
+}

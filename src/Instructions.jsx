@@ -79,11 +79,6 @@ function Instructions() {
     };
   }, [sections]);
 
-  if (!isAuthenticated) {
-    navigate('/');
-    return null;
-  }
-
   return (
     <div className="instructions-page">
       {/* Mobile TOC toggle */}

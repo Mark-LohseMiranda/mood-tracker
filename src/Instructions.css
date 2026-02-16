@@ -169,6 +169,7 @@
   border-radius: 12px;
   background: var(--card-bg);
   border: 1px solid var(--border-color);
+  z-index: 100;
 }
 
 .toc-title {
