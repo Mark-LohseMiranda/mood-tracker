@@ -66,9 +66,9 @@ For contributor and AI-session handoff context, see the docs in [`context/`](con
 - **Timezone-Aware Grouping**: Entries are grouped by your local date, not UTC - no more late-night entries appearing on the wrong day
 - **Client-Side Decryption**: Calendar averages calculated in your browser after decrypting your entries
 - **Trend Analysis**: Observe patterns over time with visual mood averages
-- **Multi-Device Sync**: Automatic cache invalidation across devices
+- **Cache Management**: Automatic cache invalidation for fresh data
   - Cache cleared on login for fresh data
-  - 5-minute cache expiration for cross-device updates
+  - 5-minute cache expiration for updates
   - Manual refresh available anytime
 
 ### 👤 Account Management
@@ -84,22 +84,13 @@ For contributor and AI-session handoff context, see the docs in [`context/`](con
   - Email management
 - **Password Management**: Change password securely
 - **Multi-Factor Authentication (MFA)**: Optional TOTP-based MFA setup
-- **Device Remember**: Securely remember devices to skip MFA on subsequent logins
-  - Choose to remember or never remember each device after MFA
-  - Device management in account settings: view devices and forget them when needed; remembering the current device is offered via an in-app prompt/modal after MFA or when re-enabling prompts
-  - "Never remember" preference persists across sessions (toggle available in Devices tab)
-  - Graceful fallback if device is no longer recognized by Cognito
 - **Account Deletion**: Complete data removal (S3, DynamoDB, Cognito)
 - **Signup Notifications**: Automatic email alerts to admin when new users register (via SES)
 
 ### 🔒 Security & Privacy
 - **End-to-End Encryption**: Sensitive data (notes, feelings, consumption) encrypted client-side before storage
 - **Zero-Knowledge Privacy**: Encryption keys never leave your browser - even developers can't read your private data
-- **AWS Cognito Authentication**: Direct SDK integration with USER_PASSWORD_AUTH flow and device tracking
-- **Device Authentication**: Seamless device recognition with optional MFA bypass
-  - Uses amazon-cognito-identity-js CognitoUser class for transparent device auth
-  - Device credentials managed automatically by SDK
-  - Device key stored securely in IndexedDB
+- **AWS Cognito Authentication**: Secure user authentication with MFA support
 - **Multi-Layer Encryption**: Client-side AES-256-GCM + AWS encryption at rest
 - **HTTPS Only**: SSL/TLS for all communications
 - **CORS Protection**: Strict origin policies
@@ -210,10 +201,8 @@ For contributor and AI-session handoff context, see the docs in [`context/`](con
 
 1. **User Sign-In**:
    - User enters credentials on custom login page
-   - Frontend calls Cognito via CognitoUser.authenticateUser()
+   - Frontend calls Cognito SDK directly
    - If MFA enabled, user enters TOTP code
-   - After successful MFA, user can choose to remember device
-   - If device previously remembered, Cognito handles device auth automatically (skips MFA)
    - Cognito returns tokens (access, ID, refresh)
    - Tokens stored in IndexedDB with automatic refresh
 
@@ -252,12 +241,12 @@ For contributor and AI-session handoff context, see the docs in [`context/`](con
    - Email includes user details (email, name, user ID, timestamp)
    - Signup flow continues normally even if notification fails
 
-6. **Multi-Device Cache Synchronization**:
-   - Device 1 creates entry → Cache invalidated locally
+6. **Cache Management**:
+   - Entry created → Cache invalidated locally
    - Entry saved to DynamoDB (source of truth)
-   - Device 2 on login → Cache cleared → Fresh data fetched
-   - Device 2 idle > 5 minutes → Cache expired → Next calendar view fetches fresh data
-   - Ensures consistent data across all logged-in devices
+   - On login → Cache cleared → Fresh data fetched
+   - After 5 minutes idle → Cache expired → Next calendar view fetches fresh data
+   - Ensures consistent data
 
 7. **Automatic Token Refresh**:
    - Access/ID tokens expire (typically 1 hour)
@@ -341,10 +330,6 @@ mood-tracker/
 │   ├── 📄 getEntriesForDay.js       # GET /entries/day?date=YYYY-MM-DD (filters by localDate)
 │   ├── 📄 getProfilePictureUploadUrl.js  # GET /profile/picture-upload-url
 │   ├── 📄 deleteProfilePicture.js   # DELETE /profile/picture
-│   ├── 📄 adminListDevices.js       # GET /device/list (list user's remembered devices)
-│   ├── 📄 adminCheckDevice.js       # POST /device/check (verify device remembered status)
-│   ├── 📄 adminUpdateDeviceStatus.js # POST /device/remember (toggle device remember status)
-│   ├── 📄 adminForgetDevice.js      # POST /device/forget (remove device from user)
 │   ├── 📄 deleteAccount.js          # POST /account
 │   ├── 📄 postConfirmation.js       # Cognito trigger (sends signup emails)
 │   ├── 📄 package.json              # Lambda dependencies
@@ -573,66 +558,6 @@ Authorization: Bearer <token>
 Response: 200 OK
 ```
 
-#### � Device Management
-
-**List User Devices**
-```http
-GET /device/list?limit=50
-Authorization: Bearer <token>
-
-Response: {
-  "devices": [
-    {
-      "DeviceKey": "device-key-string",
-      "DeviceAttributes": {
-        "device_name": "Chrome on MacOS",
-        "device_status": "confirmed"
-      },
-      "DeviceCreateDate": 1703000000,
-      "DeviceLastModifiedDate": 1703100000,
-      "DeviceRememberedStatus": "remembered" | "not_remembered"
-    }
-  ]
-}
-```
-
-**Check Device Status**
-```http
-POST /device/check
-Authorization: Bearer <token>
-
-{
-  "deviceKey": "device-key-string"
-}
-
-Response: { "remembered": true | false }
-```
-
-**Update Device Remember Status**
-```http
-POST /device/remember
-Authorization: Bearer <token>
-
-{
-  "deviceKey": "device-key-string",
-  "remember": true | false
-}
-
-Response: { "success": true }
-```
-
-**Forget Device**
-```http
-POST /device/forget
-Authorization: Bearer <token>
-
-{
-  "deviceKey": "device-key-string"
-}
-
-Response: { "success": true }
-```
-
 #### �🗑️ Account Deletion
 
 **Delete Account**
@@ -687,22 +612,16 @@ Sleep tracking is optimized for users with irregular sleep schedules (shift work
 ## �🔐 Security
 
 ### Authentication & Authorization
-- **Custom Cognito Integration**: Direct AWS SDK calls with USER_PASSWORD_AUTH flow using amazon-cognito-identity-js
+- **Custom Cognito Integration**: Direct AWS SDK calls with USER_PASSWORD_AUTH flow
 - **Password Manager Support**: Proper autocomplete attributes for 1Password, LastPass, Bitwarden
 - **JWT Tokens**: Short-lived access tokens (60 minutes), long-lived refresh tokens (30 days)
 - **Automatic Token Refresh**: Tokens refreshed before expiration for seamless 30-day sessions
 - **Token Validation**: API Gateway Cognito authorizer validates JWTs
-- **Device Tracking**: Cognito device tracking enabled (user opt-in mode)
-  - Devices remembered securely via CognitoUser.setDeviceStatusRemembered()
-  - Device credentials stored in IndexedDB with email as key
-  - Subsequent logins automatically authenticate with device credentials (DEVICE_SRP_AUTH)
-  - Users can view, remember, or forget devices in Account Settings
-- **Persistent Storage**: IndexedDB for auth tokens and device tracking (survives PWA restarts on iOS/Android/macOS)
+- **Persistent Storage**: IndexedDB for auth tokens (survives PWA restarts on iOS/Android/macOS)
   - Access, ID, and refresh tokens stored in IndexedDB for PWA persistence
-  - Device keys stored in IndexedDB for device tracking
   - Automatic cleanup on sign out
   - Fallback to localStorage for temporary data (temp_username during MFA)
-- **MFA Support**: TOTP-based multi-factor authentication with device remember flow
+- **MFA Support**: TOTP-based multi-factor authentication
 
 ### Custom Authentication Features
 - **Landing Page**: Marketing page before authentication with app overview

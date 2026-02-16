@@ -146,24 +146,13 @@ async function removeItem(key) {
  */
 export async function signIn(username, password) {
   try {
-    // Check if device is remembered for this user
-    const deviceKey = await getStoredDeviceKey(username);
-    const isDeviceRemembered = await isStoredDeviceRemembered(username);
-    
-    const authParams = {
-      USERNAME: username,
-      PASSWORD: password,
-    };
-    
-    // If device is remembered, include device key to potentially skip MFA
-    if (deviceKey && isDeviceRemembered) {
-      authParams.DEVICE_KEY = deviceKey;
-    }
-
     const command = new InitiateAuthCommand({
       AuthFlow: 'USER_PASSWORD_AUTH',
       ClientId: CLIENT_ID,
-      AuthParameters: authParams,
+      AuthParameters: {
+        USERNAME: username,
+        PASSWORD: password,
+      },
     });
 
     const response = await client.send(command);
@@ -188,14 +177,6 @@ export async function signIn(username, password) {
     if (response.AuthenticationResult) {
       await storeTokens(response.AuthenticationResult);
       await fetchUserInfo(response.AuthenticationResult.AccessToken);
-      
-      // Store new device metadata if provided
-      if (response.AuthenticationResult.NewDeviceMetadata) {
-        return {
-          success: true,
-          newDeviceMetadata: response.AuthenticationResult.NewDeviceMetadata,
-        };
-      }
       
       // Clear history cache on login to ensure fresh data from server
       localStorage.removeItem('historyCache');
@@ -233,16 +214,6 @@ export async function verifyMFA(session, mfaCode) {
       await storeTokens(response.AuthenticationResult);
       await fetchUserInfo(response.AuthenticationResult.AccessToken);
       localStorage.removeItem('temp_username');
-      
-      // Check for new device metadata
-      if (response.AuthenticationResult.NewDeviceMetadata) {
-        // Clear history cache on login to ensure fresh data from server
-        localStorage.removeItem('historyCache');
-        return {
-          success: true,
-          newDeviceMetadata: response.AuthenticationResult.NewDeviceMetadata,
-        };
-      }
       
       // Clear history cache on login to ensure fresh data from server
       localStorage.removeItem('historyCache');
@@ -606,79 +577,4 @@ function parseJwt(token) {
     console.error('Failed to parse JWT:', error);
     return { exp: 0 };
   }
-}
-
-// Device remember functions (localStorage-based, async for consistency)
-export async function getStoredDeviceKey(email) {
-  try {
-    return localStorage.getItem(`device_key_${email}`);
-  } catch {
-    return null;
-  }
-}
-
-export async function setStoredDeviceKey(email, deviceKey) {
-  try {
-    localStorage.setItem(`device_key_${email}`, deviceKey);
-  } catch (e) {
-    console.error('Failed to store device key:', e);
-  }
-}
-
-export async function removeStoredDeviceKey(email) {
-  try {
-    localStorage.removeItem(`device_key_${email}`);
-  } catch (e) {
-    console.error('Failed to remove device key:', e);
-  }
-}
-
-export async function isStoredDeviceRemembered(email) {
-  try {
-    return localStorage.getItem(`device_remembered_${email}`) === 'true';
-  } catch {
-    return false;
-  }
-}
-
-export async function setStoredDeviceRemembered(email, remembered) {
-  try {
-    localStorage.setItem(`device_remembered_${email}`, remembered ? 'true' : 'false');
-  } catch (e) {
-    console.error('Failed to set device remembered:', e);
-  }
-}
-
-export async function isNeverRememberDevice(email) {
-  try {
-    return localStorage.getItem(`never_remember_${email}`) === 'true';
-  } catch {
-    return false;
-  }
-}
-
-export async function setNeverRememberDevice(email, never) {
-  try {
-    localStorage.setItem(`never_remember_${email}`, never ? 'true' : 'false');
-  } catch (e) {
-    console.error('Failed to set never remember device:', e);
-  }
-}
-
-export async function rememberDeviceBackend(deviceKey, remember) {
-  // Stub: Backend API call to remember device would go here
-  console.log('rememberDeviceBackend called:', { deviceKey, remember });
-  return { success: true };
-}
-
-export async function listDevicesBackend() {
-  // Stub: Backend API call to list devices would go here
-  console.log('listDevicesBackend called');
-  return [];
-}
-
-export async function confirmDeviceAndRemember(metadata, email, deviceName) {
-  // Stub: Device confirmation logic would go here
-  console.log('confirmDeviceAndRemember called:', { metadata, email, deviceName });
-  return { success: true };
 }
