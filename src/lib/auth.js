@@ -11,23 +11,13 @@ import {
   ConfirmForgotPasswordCommand,
   GlobalSignOutCommand,
   GetUserCommand,
-  ConfirmDeviceCommand,
-  UpdateDeviceStatusCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { CognitoUserPool, CognitoUser, AuthenticationDetails, CognitoUserSession, CognitoAccessToken, CognitoIdToken, CognitoRefreshToken } from 'amazon-cognito-identity-js';
-import { AuthenticationHelper } from 'amazon-cognito-identity-js';
-import BigInteger from 'amazon-cognito-identity-js/lib/BigInteger';
-import { Buffer } from 'buffer';
 
 const REGION = import.meta.env.VITE_COGNITO_REGION;
 const USER_POOL_ID = import.meta.env.VITE_COGNITO_USER_POOL_ID;
 const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID;
 
 const client = new CognitoIdentityProviderClient({ region: REGION });
-const userPool = new CognitoUserPool({
-  UserPoolId: USER_POOL_ID,
-  ClientId: CLIENT_ID,
-});
 
 // Storage keys
 const ACCESS_TOKEN_KEY = 'cognito_access_token';
@@ -42,23 +32,26 @@ const STORE_NAME = 'tokens';
 
 let db;
 
-async function openDB() {
-  if (db) return db;
+function hasLocalStorage() {
+  try {
+    return typeof window !== 'undefined' && !!window.localStorage;
+  } catch (error) {
+    return false;
+  }
+}
 
+async function initDB() {
+  if (db) return db;
+  
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-
+    
     request.onerror = () => reject(request.error);
     request.onsuccess = () => {
       db = request.result;
-      db.onclose = () => { db = null; };
-      db.onversionchange = () => {
-        try { db?.close(); } catch (e) {}
-        db = null;
-      };
       resolve(db);
     };
-
+    
     request.onupgradeneeded = (event) => {
       const database = event.target.result;
       if (!database.objectStoreNames.contains(STORE_NAME)) {
@@ -68,260 +61,164 @@ async function openDB() {
   });
 }
 
-async function withDB(operation) {
-  let attempts = 0;
-  while (attempts < 2) {
-    try {
-      const database = await openDB();
-      return await operation(database);
-    } catch (error) {
-      const closed = error?.name === 'InvalidStateError' || error?.message?.includes('closed database');
-      if (closed && attempts === 0) {
-        db = null; // Force reopen on next attempt
-        attempts += 1;
-        continue;
-      }
-      throw error;
-    }
-  }
-  throw new Error('IndexedDB unavailable');
-}
-
 async function setItem(key, value) {
-  return withDB((database) => new Promise((resolve, reject) => {
-    const transaction = database.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.put(value, key);
+  let indexedDbError = null;
 
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  }));
+  try {
+    const database = await initDB();
+    await new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.put(value, key);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  } catch (error) {
+    indexedDbError = error;
+  }
+
+  if (hasLocalStorage()) {
+    localStorage.setItem(key, value);
+    return;
+  }
+
+  if (indexedDbError) {
+    throw indexedDbError;
+  }
 }
 
 async function getItem(key) {
-  return withDB((database) => new Promise((resolve, reject) => {
-    const transaction = database.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.get(key);
+  try {
+    const database = await initDB();
+    const value = await new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORE_NAME], 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(key);
 
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  }));
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+
+    if (value !== undefined && value !== null) {
+      return value;
+    }
+  } catch (error) {
+    // Fallback to localStorage below.
+  }
+
+  if (hasLocalStorage()) {
+    return localStorage.getItem(key);
+  }
+
+  return null;
 }
 
 async function removeItem(key) {
-  return withDB((database) => new Promise((resolve, reject) => {
-    const transaction = database.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.delete(key);
+  let indexedDbError = null;
 
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  }));
+  try {
+    const database = await initDB();
+    await new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.delete(key);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  } catch (error) {
+    indexedDbError = error;
+  }
+
+  if (hasLocalStorage()) {
+    localStorage.removeItem(key);
+    return;
+  }
+
+  if (indexedDbError) {
+    throw indexedDbError;
+  }
 }
 
 /**
- * Sign in with username and password using CognitoUser (handles device auth automatically)
+ * Sign in with username and password
  */
 export async function signIn(username, password) {
   try {
-    const authenticationData = {
-      Username: username,
-      Password: password,
-    };
-    const authenticationDetails = new AuthenticationDetails(authenticationData);
+    const command = new InitiateAuthCommand({
+      AuthFlow: 'USER_PASSWORD_AUTH',
+      ClientId: CLIENT_ID,
+      AuthParameters: {
+        USERNAME: username,
+        PASSWORD: password,
+      },
+    });
 
-    const userData = {
-      Username: username,
-      Pool: userPool,
-    };
-    const cognitoUser = new CognitoUser(userData);
+    const response = await client.send(command);
 
-    // Try to get stored device key and set it on the user
-    try {
-      const storedDeviceKey = await getStoredDeviceKey(username);
-      if (storedDeviceKey) {
-        cognitoUser.deviceKey = storedDeviceKey;
-      }
-    } catch (e) {
-      // ignore storage errors
+    // Check if MFA is required
+    if (response.ChallengeName === 'SOFTWARE_TOKEN_MFA') {
+      return {
+        challengeName: 'SOFTWARE_TOKEN_MFA',
+        session: response.Session,
+      };
     }
 
-    return new Promise((resolve, reject) => {
-      cognitoUser.authenticateUser(authenticationDetails, {
-        onSuccess: async (result) => {
-          // Successful authentication - store tokens
-          await storeTokens({
-            AccessToken: result.getAccessToken().getJwtToken(),
-            IdToken: result.getIdToken().getJwtToken(),
-            RefreshToken: result.getRefreshToken().getToken(),
-          });
-          await fetchUserInfo(result.getAccessToken().getJwtToken());
-          localStorage.removeItem('historyCache');
-          
-          // Check for new device metadata
-          const newDeviceMetadata = cognitoUser.deviceKey ? {
-            DeviceKey: cognitoUser.deviceKey,
-            DeviceGroupKey: cognitoUser.deviceGroupKey,
-          } : null;
-          
-          resolve({ success: true, newDeviceMetadata });
-        },
-        onFailure: (err) => {
-          reject(new Error(err.message || 'Failed to sign in'));
-        },
-        mfaRequired: (challengeName, challengeParameters) => {
-          // MFA challenge - return to UI
-          // Store cognitoUser for later device confirmation
-          try {
-            localStorage.setItem('cognito_user_data', JSON.stringify({
-              Username: username,
-              Pool: { UserPoolId: USER_POOL_ID, ClientId: CLIENT_ID }
-            }));
-          } catch (e) {}
-          
-          resolve({
-            challengeName: 'SOFTWARE_TOKEN_MFA',
-            session: cognitoUser.Session,
-            cognitoUser, // Pass the user object for MFA verification
-          });
-        },
-        totpRequired: (challengeName, challengeParameters) => {
-          // TOTP MFA challenge
-          resolve({
-            challengeName: 'SOFTWARE_TOKEN_MFA',
-            session: cognitoUser.Session,
-            cognitoUser,
-          });
-        },
-        newDeviceMetadata: (newDevice) => {
-          // Device metadata available - will be handled in onSuccess
-        },
-      });
-    });
+    // Check if new password is required
+    if (response.ChallengeName === 'NEW_PASSWORD_REQUIRED') {
+      return {
+        challengeName: 'NEW_PASSWORD_REQUIRED',
+        session: response.Session,
+      };
+    }
+
+    // Successful authentication
+    if (response.AuthenticationResult) {
+      await storeTokens(response.AuthenticationResult);
+      await fetchUserInfo(response.AuthenticationResult.AccessToken);
+      // Clear history cache on login to ensure fresh data from server
+      localStorage.removeItem('historyCache');
+      return { success: true };
+    }
+
+    throw new Error('Unexpected authentication response');
   } catch (error) {
     console.error('Sign in error:', error);
     throw new Error(error.message || 'Failed to sign in');
   }
 }
 
-// Device key helpers (persisted in IndexedDB like other tokens)
-export async function setStoredDeviceKey(username, deviceKey) {
-  try {
-    await setItem(`deviceKey_${username}`, deviceKey);
-  } catch (e) { console.error('setStoredDeviceKey error', e); }
-}
-
-export async function getStoredDeviceKey(username) {
-  try {
-    return await getItem(`deviceKey_${username}`) || null;
-  } catch (e) { console.error('getStoredDeviceKey error', e); return null; }
-}
-
-export async function removeStoredDeviceKey(username) {
-  try { await removeItem(`deviceKey_${username}`); } catch (e) { console.error(e); }
-}
-
-export async function setStoredDeviceSecret(username, deviceSecret) {
-  try {
-    await setItem(`deviceSecret_${username}`, deviceSecret);
-  } catch (e) { console.error('setStoredDeviceSecret error', e); }
-}
-
-export async function getStoredDeviceSecret(username) {
-  try {
-    return await getItem(`deviceSecret_${username}`) || null;
-  } catch (e) { console.error('getStoredDeviceSecret error', e); return null; }
-}
-
-export async function removeStoredDeviceSecret(username) {
-  try { await removeItem(`deviceSecret_${username}`); } catch (e) { console.error(e); }
-}
-
-export async function setStoredDeviceGroupKey(username, deviceGroupKey) {
-  try {
-    await setItem(`deviceGroupKey_${username}`, deviceGroupKey);
-  } catch (e) { console.error('setStoredDeviceGroupKey error', e); }
-}
-
-export async function getStoredDeviceGroupKey(username) {
-  try {
-    return await getItem(`deviceGroupKey_${username}`) || null;
-  } catch (e) { console.error('getStoredDeviceGroupKey error', e); return null; }
-}
-
-export async function removeStoredDeviceGroupKey(username) {
-  try { await removeItem(`deviceGroupKey_${username}`); } catch (e) { console.error(e); }
-}
-
-export async function setStoredDeviceRemembered(username, remembered = true) {
-  try {
-    if (remembered) await setItem(`device_remembered_${username}`, '1');
-    else await removeItem(`device_remembered_${username}`);
-  } catch (e) { console.error('setStoredDeviceRemembered error', e); }
-}
-
-export async function isStoredDeviceRemembered(username) {
-  try {
-    const v = await getItem(`device_remembered_${username}`);
-    return !!v;
-  } catch (e) { return false; }
-}
-
-// Never-remember preference helpers
-export async function setNeverRememberDevice(username, never = true) {
-  try {
-    if (never) await setItem(`never_remember_device_${username}`, '1');
-    else await removeItem(`never_remember_device_${username}`);
-  } catch (e) { console.error('setNeverRememberDevice error', e); }
-}
-
-export async function isNeverRememberDevice(username) {
-  try {
-    const v = await getItem(`never_remember_device_${username}`);
-    return !!v;
-  } catch (e) { return false; }
-}
-
 /**
- * Respond to MFA challenge using CognitoUser
+ * Respond to MFA challenge
  */
-export async function verifyMFA(cognitoUser, mfaCode) {
+export async function verifyMFA(session, mfaCode) {
   try {
-    if (!cognitoUser) {
-      throw new Error('No Cognito user session found');
+    // Get from localStorage since we stored it there during login
+    const tempUsername = localStorage.getItem('temp_username');
+    
+    const command = new RespondToAuthChallengeCommand({
+      ClientId: CLIENT_ID,
+      ChallengeName: 'SOFTWARE_TOKEN_MFA',
+      Session: session,
+      ChallengeResponses: {
+        SOFTWARE_TOKEN_MFA_CODE: mfaCode,
+        USERNAME: tempUsername,
+      },
+    });
+
+    const response = await client.send(command);
+
+    if (response.AuthenticationResult) {
+      await storeTokens(response.AuthenticationResult);
+      await fetchUserInfo(response.AuthenticationResult.AccessToken);
+      localStorage.removeItem('temp_username');
+      // Clear history cache on login to ensure fresh data from server
+      localStorage.removeItem('historyCache');
+      return { success: true };
     }
 
-    return new Promise((resolve, reject) => {
-      cognitoUser.sendMFACode(
-        mfaCode,
-        {
-          onSuccess: async (result) => {
-            // Successful MFA - store tokens
-            await storeTokens({
-              AccessToken: result.getAccessToken().getJwtToken(),
-              IdToken: result.getIdToken().getJwtToken(),
-              RefreshToken: result.getRefreshToken().getToken(),
-            });
-            await fetchUserInfo(result.getAccessToken().getJwtToken());
-            localStorage.removeItem('temp_username');
-            localStorage.removeItem('historyCache');
-            
-            // Check for new device metadata
-            const newDeviceMetadata = cognitoUser.deviceKey ? {
-              DeviceKey: cognitoUser.deviceKey,
-              DeviceGroupKey: cognitoUser.deviceGroupKey,
-            } : null;
-            
-            resolve({ success: true, newDeviceMetadata });
-          },
-          onFailure: (err) => {
-            reject(new Error(err.message || 'Invalid MFA code'));
-          },
-        },
-        'SOFTWARE_TOKEN_MFA'
-      );
-    });
+    throw new Error('MFA verification failed');
   } catch (error) {
     console.error('MFA verification error:', error);
     throw new Error(error.message || 'Invalid MFA code');
@@ -492,9 +389,13 @@ export async function signOut() {
  */
 export async function getCurrentUser() {
   try {
-    const accessToken = await getItem(ACCESS_TOKEN_KEY);
+    let accessToken = await getItem(ACCESS_TOKEN_KEY);
     if (!accessToken) {
-      return null;
+      await refreshSession();
+      accessToken = await getItem(ACCESS_TOKEN_KEY);
+      if (!accessToken) {
+        return null;
+      }
     }
 
     // Check if token is expired
@@ -502,10 +403,18 @@ export async function getCurrentUser() {
     if (tokenPayload.exp * 1000 < Date.now()) {
       // Token expired, try to refresh
       await refreshSession();
-      return getCurrentUser(); // Retry with new token
+      accessToken = await getItem(ACCESS_TOKEN_KEY);
+      if (!accessToken) {
+        return null;
+      }
     }
 
-    const userInfo = await getItem(USER_INFO_KEY);
+    let userInfo = await getItem(USER_INFO_KEY);
+    if (!userInfo) {
+      await fetchUserInfo(accessToken);
+      userInfo = await getItem(USER_INFO_KEY);
+    }
+
     return userInfo ? JSON.parse(userInfo) : null;
   } catch (error) {
     console.error('Get current user error:', error);
@@ -517,21 +426,35 @@ export async function getCurrentUser() {
  * Check if user is authenticated
  */
 export async function isAuthenticated() {
-  const accessToken = await getItem(ACCESS_TOKEN_KEY);
-  if (!accessToken) return false;
+  let accessToken = await getItem(ACCESS_TOKEN_KEY);
+
+  if (!accessToken) {
+    try {
+      await refreshSession();
+      accessToken = await getItem(ACCESS_TOKEN_KEY);
+      if (!accessToken) {
+        return false;
+      }
+    } catch (error) {
+      return false;
+    }
+  }
 
   const tokenPayload = parseJwt(accessToken);
   if (tokenPayload.exp * 1000 > Date.now()) {
     return true;
   }
-  // Try refreshing session if the access token is expired but a refresh token exists
+
   try {
     await refreshSession();
-    const refreshed = await getItem(ACCESS_TOKEN_KEY);
-    if (!refreshed) return false;
-    const payload = parseJwt(refreshed);
-    return payload.exp * 1000 > Date.now();
-  } catch (e) {
+    const refreshedAccessToken = await getItem(ACCESS_TOKEN_KEY);
+    if (!refreshedAccessToken) {
+      return false;
+    }
+
+    const refreshedPayload = parseJwt(refreshedAccessToken);
+    return refreshedPayload.exp * 1000 > Date.now();
+  } catch (error) {
     return false;
   }
 }
@@ -557,70 +480,6 @@ export async function getAccessToken() {
   }
 
   return accessToken;
-}
-
-/**
- * Confirm the current device (NewDeviceMetadata) and mark it remembered.
- * Uses the current session's AccessToken to call ConfirmDevice + UpdateDeviceStatus.
- */
-export async function confirmDeviceAndRemember(newDeviceMetadata, username, deviceName = 'web') {
-  if (!newDeviceMetadata?.DeviceKey || !newDeviceMetadata?.DeviceGroupKey) {
-    throw new Error('Missing device metadata');
-  }
-  if (!username) {
-    throw new Error('Username required to store device credentials');
-  }
-
-  const accessToken = await getAccessToken();
-  if (!accessToken) throw new Error('Not authenticated');
-
-  try {
-    // Recreate CognitoUser to use its built-in device methods
-    const userData = {
-      Username: username,
-      Pool: userPool,
-    };
-    const cognitoUser = new CognitoUser(userData);
-    
-    // Get all tokens to create a proper session
-    const idToken = await getItem(ID_TOKEN_KEY);
-    const refreshToken = await getItem(REFRESH_TOKEN_KEY);
-    
-    // Create proper token objects
-    const AccessToken = new CognitoAccessToken({ AccessToken: accessToken });
-    const IdToken = new CognitoIdToken({ IdToken: idToken });
-    const RefreshToken = new CognitoRefreshToken({ RefreshToken: refreshToken });
-    
-    // Create a proper session
-    const session = new CognitoUserSession({
-      IdToken,
-      AccessToken,
-      RefreshToken,
-    });
-    
-    cognitoUser.setSignInUserSession(session);
-    
-    // Set device metadata
-    cognitoUser.deviceKey = newDeviceMetadata.DeviceKey;
-    cognitoUser.deviceGroupKey = newDeviceMetadata.DeviceGroupKey;
-
-    return new Promise((resolve, reject) => {
-      cognitoUser.setDeviceStatusRemembered({
-        onSuccess: async (result) => {
-          // Store device key for future logins
-          await setStoredDeviceKey(username, cognitoUser.deviceKey);
-          resolve({ deviceKey: cognitoUser.deviceKey, method: 'client' });
-        },
-        onFailure: (err) => {
-          console.error('setDeviceStatusRemembered failed:', err);
-          reject(new Error('Failed to remember device: ' + err.message));
-        },
-      });
-    });
-  } catch (err) {
-    console.error('confirmDeviceAndRemember failed', err);
-    throw new Error('Failed to confirm device. Please try signing in again.');
-  }
 }
 
 /**
@@ -715,111 +574,5 @@ function parseJwt(token) {
   } catch (error) {
     console.error('Failed to parse JWT:', error);
     return { exp: 0 };
-  }
-}
-
-/**
- * Client helper: call backend endpoint to remember/forget a device (secure admin API)
- * Expects the backend to be configured at VITE_API_URL and protected by Cognito authorizer
- */
-export async function rememberDeviceBackend(deviceKey, remember = true) {
-  try {
-    const idToken = await getIdToken();
-    if (!idToken) throw new Error('Not authenticated');
-
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/device/remember`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${idToken}`,
-      },
-      body: JSON.stringify({ deviceKey, remember }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to update device status');
-    }
-
-    return await res.json();
-  } catch (err) {
-    console.error('rememberDeviceBackend error', err);
-    throw err;
-  }
-}
-
-export async function listDevicesBackend(limit = 50) {
-  try {
-    const idToken = await getIdToken();
-    if (!idToken) throw new Error('Not authenticated');
-
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/device/list?limit=${limit}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${idToken}`,
-      }
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to list devices');
-    }
-
-    return await res.json();
-  } catch (err) {
-    console.error('listDevicesBackend error', err);
-    throw err;
-  }
-}
-
-export async function forgetDeviceBackend(deviceKey) {
-  try {
-    const idToken = await getIdToken();
-    if (!idToken) throw new Error('Not authenticated');
-
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/device/forget`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${idToken}`,
-      },
-      body: JSON.stringify({ deviceKey }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to forget device');
-    }
-
-    return await res.json();
-  } catch (err) {
-    console.error('forgetDeviceBackend error', err);
-    throw err;
-  }
-}
-
-export async function checkDeviceBackend(deviceKey) {
-  try {
-    const idToken = await getIdToken();
-    if (!idToken) throw new Error('Not authenticated');
-
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/device/check`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${idToken}`,
-      },
-      body: JSON.stringify({ deviceKey }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to check device');
-    }
-
-    return await res.json();
-  } catch (err) {
-    console.error('checkDeviceBackend error', err);
-    throw err;
   }
 }

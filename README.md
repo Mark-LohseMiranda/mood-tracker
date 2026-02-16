@@ -15,6 +15,7 @@
 - [Features](#-features)
 - [Architecture](#-architecture)
 - [Tech Stack](#-tech-stack)
+- [Context Files](#-context-files)
 - [Project Structure](#-project-structure)
 - [Getting Started](#-getting-started)
 - [Deployment](#-deployment)
@@ -30,6 +31,19 @@
 
 ### 🌟 Live Demo
 - **Production**: [https://myemtee.com](https://myemtee.com)
+
+---
+
+## 🧠 Context Files
+
+For contributor and AI-session handoff context, see the docs in [`context/`](context/):
+
+- [`context/README.md`](context/README.md)
+- [`context/PROJECT_CONTEXT.md`](context/PROJECT_CONTEXT.md)
+- [`context/ARCHITECTURE_CONTEXT.md`](context/ARCHITECTURE_CONTEXT.md)
+- [`context/OPERATIONS_CONTEXT.md`](context/OPERATIONS_CONTEXT.md)
+- [`context/SECURITY_CONTEXT.md`](context/SECURITY_CONTEXT.md)
+- [`context/AI_SESSION_CONTEXT.md`](context/AI_SESSION_CONTEXT.md)
 
 ---
 
@@ -349,11 +363,6 @@ mood-tracker/
 │       ├── 📄 calendar-view.webp
 │       ├── 📄 calendar-day-detail.webp
 │       └── 📄 account-settings.webp
-│
-├── 📂 dev-dist/                     # Service worker files
-│   ├── 📄 registerSW.js
-│   ├── 📄 sw.js
-│   └── 📄 workbox-*.js
 │
 ├── 📄 index.html                    # HTML entry point
 ├── 📄 vite.config.js                # Vite configuration
