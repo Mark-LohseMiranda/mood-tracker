@@ -431,6 +431,12 @@ export async function isAuthenticated() {
   let accessToken = await getItem(ACCESS_TOKEN_KEY);
 
   if (!accessToken) {
+    // Only try to refresh if there's a refresh token available
+    const refreshToken = await getItem(REFRESH_TOKEN_KEY);
+    if (!refreshToken) {
+      return false;
+    }
+
     try {
       await refreshSession();
       accessToken = await getItem(ACCESS_TOKEN_KEY);

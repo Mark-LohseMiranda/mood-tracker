@@ -15,13 +15,6 @@ export default function Login({ onLoginSuccess, onSwitchToSignUp, onSwitchToForg
   const mfaInputRef = useRef(null);
   const formRef = useRef(null);
 
-  // Check if device is already remembered when remember choice screen shows
-  useEffect(() => {
-    if (showRememberChoice) {
-      isStoredDeviceRemembered(email).then(setIsAlreadyRemembered);
-    }
-  }, [showRememberChoice, email]);
-
   // Auto-submit when 6 digits entered for MFA
   // Removed auto-submit when 6 digits entered so users can
   // check the "Remember this device" box before verifying.
