@@ -146,13 +146,24 @@ async function removeItem(key) {
  */
 export async function signIn(username, password) {
   try {
+    // Check if device is remembered for this user
+    const deviceKey = await getStoredDeviceKey(username);
+    const isDeviceRemembered = await isStoredDeviceRemembered(username);
+    
+    const authParams = {
+      USERNAME: username,
+      PASSWORD: password,
+    };
+    
+    // If device is remembered, include device key to potentially skip MFA
+    if (deviceKey && isDeviceRemembered) {
+      authParams.DEVICE_KEY = deviceKey;
+    }
+
     const command = new InitiateAuthCommand({
       AuthFlow: 'USER_PASSWORD_AUTH',
       ClientId: CLIENT_ID,
-      AuthParameters: {
-        USERNAME: username,
-        PASSWORD: password,
-      },
+      AuthParameters: authParams,
     });
 
     const response = await client.send(command);
@@ -177,6 +188,15 @@ export async function signIn(username, password) {
     if (response.AuthenticationResult) {
       await storeTokens(response.AuthenticationResult);
       await fetchUserInfo(response.AuthenticationResult.AccessToken);
+      
+      // Store new device metadata if provided
+      if (response.AuthenticationResult.NewDeviceMetadata) {
+        return {
+          success: true,
+          newDeviceMetadata: response.AuthenticationResult.NewDeviceMetadata,
+        };
+      }
+      
       // Clear history cache on login to ensure fresh data from server
       localStorage.removeItem('historyCache');
       return { success: true };
@@ -213,6 +233,17 @@ export async function verifyMFA(session, mfaCode) {
       await storeTokens(response.AuthenticationResult);
       await fetchUserInfo(response.AuthenticationResult.AccessToken);
       localStorage.removeItem('temp_username');
+      
+      // Check for new device metadata
+      if (response.AuthenticationResult.NewDeviceMetadata) {
+        // Clear history cache on login to ensure fresh data from server
+        localStorage.removeItem('historyCache');
+        return {
+          success: true,
+          newDeviceMetadata: response.AuthenticationResult.NewDeviceMetadata,
+        };
+      }
+      
       // Clear history cache on login to ensure fresh data from server
       localStorage.removeItem('historyCache');
       return { success: true };
@@ -577,8 +608,8 @@ function parseJwt(token) {
   }
 }
 
-// Device remember functions (localStorage-based)
-export function getStoredDeviceKey(email) {
+// Device remember functions (localStorage-based, async for consistency)
+export async function getStoredDeviceKey(email) {
   try {
     return localStorage.getItem(`device_key_${email}`);
   } catch {
@@ -586,7 +617,7 @@ export function getStoredDeviceKey(email) {
   }
 }
 
-export function setStoredDeviceKey(email, deviceKey) {
+export async function setStoredDeviceKey(email, deviceKey) {
   try {
     localStorage.setItem(`device_key_${email}`, deviceKey);
   } catch (e) {
@@ -594,7 +625,7 @@ export function setStoredDeviceKey(email, deviceKey) {
   }
 }
 
-export function removeStoredDeviceKey(email) {
+export async function removeStoredDeviceKey(email) {
   try {
     localStorage.removeItem(`device_key_${email}`);
   } catch (e) {
@@ -602,7 +633,7 @@ export function removeStoredDeviceKey(email) {
   }
 }
 
-export function isStoredDeviceRemembered(email) {
+export async function isStoredDeviceRemembered(email) {
   try {
     return localStorage.getItem(`device_remembered_${email}`) === 'true';
   } catch {
@@ -610,7 +641,7 @@ export function isStoredDeviceRemembered(email) {
   }
 }
 
-export function setStoredDeviceRemembered(email, remembered) {
+export async function setStoredDeviceRemembered(email, remembered) {
   try {
     localStorage.setItem(`device_remembered_${email}`, remembered ? 'true' : 'false');
   } catch (e) {
@@ -618,7 +649,7 @@ export function setStoredDeviceRemembered(email, remembered) {
   }
 }
 
-export function isNeverRememberDevice(email) {
+export async function isNeverRememberDevice(email) {
   try {
     return localStorage.getItem(`never_remember_${email}`) === 'true';
   } catch {
@@ -626,7 +657,7 @@ export function isNeverRememberDevice(email) {
   }
 }
 
-export function setNeverRememberDevice(email, never) {
+export async function setNeverRememberDevice(email, never) {
   try {
     localStorage.setItem(`never_remember_${email}`, never ? 'true' : 'false');
   } catch (e) {

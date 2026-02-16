@@ -228,6 +228,8 @@ functions:
             origins:
               - 'https://myemtee.com'
               - 'https://www.myemtee.com'
+              - 'http://localhost:5173'
+              - 'http://localhost:3000'
             headers:
               - Content-Type
               - Authorization
@@ -250,6 +252,8 @@ functions:
             origins:
               - 'https://myemtee.com'
               - 'https://www.myemtee.com'
+              - 'http://localhost:5173'
+              - 'http://localhost:3000'
             headers:
               - Content-Type
               - Authorization
@@ -272,6 +276,8 @@ functions:
             origins:
               - 'https://myemtee.com'
               - 'https://www.myemtee.com'
+              - 'http://localhost:5173'
+              - 'http://localhost:3000'
             headers:
               - Content-Type
               - Authorization
@@ -294,6 +300,8 @@ functions:
             origins:
               - 'https://myemtee.com'
               - 'https://www.myemtee.com'
+              - 'http://localhost:5173'
+              - 'http://localhost:3000'
             headers:
               - Content-Type
               - Authorization

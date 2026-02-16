@@ -96,7 +96,7 @@ export default function Login({ onLoginSuccess, onSwitchToSignUp, onSwitchToForg
     setLoading(true);
 
     try {
-      const result = await verifyMFA(cognitoUser, mfaCode);
+      const result = await verifyMFA(mfaSession, mfaCode);
       if (result.success) {
         if (result.newDeviceMetadata) {
           try {
