@@ -1,10 +1,9 @@
 .landing-container {
-  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 2rem;
+  padding: 3rem 2rem;
 }
 
 .landing-content {
@@ -114,5 +113,340 @@
   .landing-buttons .btn-primary,
   .landing-buttons .btn-secondary {
     max-width: 100%;
+  }
+}
+
+/* Sales Pitch Section */
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(60px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.landing-page {
+  background: white;
+}
+
+.sales-pitch {
+  background: linear-gradient(to bottom, #ffffff 0%, #f7fafc 50%, #ffffff 100%);
+  padding: 4rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.pitch-intro {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.pitch-intro.visible {
+  animation: slideInFromLeft 0.6s ease-out forwards;
+}
+
+.pitch-intro h2 {
+  font-size: 2.5rem;
+  color: #2d3748;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.pitch-intro p {
+  font-size: 1.125rem;
+  color: #4a5568;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.pitch-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
+  margin-bottom: 4rem;
+}
+
+.pitch-section.odd {
+}
+
+.pitch-section.visible {
+  animation: slideInFromLeft 0.6s ease-out forwards;
+}
+
+.pitch-section.odd.visible {
+  animation: slideInFromRight 0.6s ease-out forwards;
+}
+
+.pitch-section-right {
+  direction: rtl;
+}
+
+.pitch-section-right > * {
+  direction: ltr;
+}
+
+.pitch-image-wrapper {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  background: white;
+  height: 400px;
+}
+
+.pitch-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.pitch-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: none;
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.pitch-content {
+  padding: 0 1rem;
+}
+
+.pitch-content h3 {
+  font-size: 1.875rem;
+  color: #2d3748;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.pitch-content p {
+  font-size: 1.0625rem;
+  color: #4a5568;
+  line-height: 1.7;
+  margin-bottom: 1.5rem;
+}
+
+.btn-pitch-cta {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.875rem 1.75rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-block;
+}
+
+.btn-pitch-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.pitch-closing {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
+  color: white;
+  margin-top: 4rem;
+  animation: slideInFromLeft 0.6s ease-out 0.5s backwards;
+}
+
+.pitch-closing h2 {
+  font-size: 2.25rem;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.pitch-closing p {
+  font-size: 1.125rem;
+  margin-bottom: 2rem;
+  opacity: 0.95;
+}
+
+.btn-large {
+  padding: 1.125rem 2.5rem;
+  font-size: 1.125rem;
+  background: white !important;
+  color: #667eea !important;
+}
+
+.btn-large:hover {
+  background: #f7fafc !important;
+}
+
+/* Trust Section */
+.pitch-trust {
+  margin: 4rem 0;
+  padding: 3rem 2rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.pitch-trust.visible {
+  animation: slideInFromLeft 0.6s ease-out forwards;
+}
+
+.trust-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+}
+
+.trust-item {
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.trust-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  display: inline-block;
+}
+
+.trust-item h4 {
+  font-size: 1.25rem;
+  color: #2d3748;
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+}
+
+.trust-item p {
+  font-size: 0.95rem;
+  color: #4a5568;
+  line-height: 1.6;
+}
+
+/* Dark Mode Support for Trust Section */
+html.dark .pitch-trust {
+  background: #2d3748;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+html.dark .trust-item h4 {
+  color: #e2e8f0;
+}
+
+html.dark .trust-item p {
+  color: #cbd5e0;
+}
+
+/* Dark Mode Support */
+html.dark .sales-pitch {
+  background: linear-gradient(to bottom, #1a202c 0%, #2d3748 50%, #1a202c 100%);
+}
+
+html.dark .pitch-intro h2,
+html.dark .pitch-content h3 {
+  color: #e2e8f0;
+}
+
+html.dark .pitch-intro p,
+html.dark .pitch-content p {
+  color: #cbd5e0;
+}
+
+html.dark .pitch-image-wrapper {
+  background: #2d3748;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+html.dark .pitch-image-placeholder {
+  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+}
+
+html.dark .pitch-closing {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .pitch-section {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .pitch-section-right {
+    direction: ltr;
+  }
+
+  .pitch-image-wrapper {
+    height: 300px;
+  }
+
+  .pitch-intro h2 {
+    font-size: 1.875rem;
+  }
+
+  .pitch-content h3 {
+    font-size: 1.5rem;
+  }
+
+  .pitch-closing h2 {
+    font-size: 1.875rem;
+  }
+
+  .sales-pitch {
+    padding: 2rem 1rem;
+  }
+
+  .pitch-section {
+    margin-bottom: 2rem;
+  }
+
+  .pitch-closing {
+    margin-top: 2rem;
+  }
+
+  .pitch-trust {
+    margin: 2rem 0;
+    padding: 2rem 1rem;
+  }
+
+  .trust-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .trust-item {
+    padding: 1rem;
+  }
+
+  .trust-icon {
+    font-size: 2.5rem;
+  }
+
+  .trust-item h4 {
+    font-size: 1.1rem;
+  }
+
+  .trust-item p {
+    font-size: 0.9rem;
   }
 }

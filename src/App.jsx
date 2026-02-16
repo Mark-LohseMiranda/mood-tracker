@@ -65,37 +65,49 @@ function App() {
 
     if (authView === 'landing') {
       return (
-        <LandingPage
-          onSignIn={() => setAuthView('login')}
-          onSignUp={() => setAuthView('signup')}
-        />
+        <>
+          <LandingPage
+            onSignIn={() => setAuthView('login')}
+            onSignUp={() => setAuthView('signup')}
+          />
+          <Footer />
+        </>
       );
     }
 
     if (authView === 'signup') {
       return (
-        <SignUp
-          onSignUpSuccess={handleSignUpSuccess}
-          onSwitchToLogin={() => setAuthView('login')}
-        />
+        <>
+          <SignUp
+            onSignUpSuccess={handleSignUpSuccess}
+            onSwitchToLogin={() => setAuthView('login')}
+          />
+          <Footer />
+        </>
       );
     }
 
     if (authView === 'forgot-password') {
       return (
-        <ForgotPassword
-          onResetSuccess={handleResetSuccess}
-          onSwitchToLogin={() => setAuthView('login')}
-        />
+        <>
+          <ForgotPassword
+            onResetSuccess={handleResetSuccess}
+            onSwitchToLogin={() => setAuthView('login')}
+          />
+          <Footer />
+        </>
       );
     }
 
     return (
-      <Login
-        onLoginSuccess={handleLoginSuccess}
-        onSwitchToSignUp={() => setAuthView('signup')}
-        onSwitchToForgotPassword={() => setAuthView('forgot-password')}
-      />
+      <>
+        <Login
+          onLoginSuccess={handleLoginSuccess}
+          onSwitchToSignUp={() => setAuthView('signup')}
+          onSwitchToForgotPassword={() => setAuthView('forgot-password')}
+        />
+        <Footer />
+      </>
     );
   }
 
