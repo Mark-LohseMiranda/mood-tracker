@@ -47,7 +47,7 @@ async function getEntriesForMonth(event) {
     }
   }));
 
-  // Group by day (YYYY-MM-DD) and collect feelings (encrypted or not)
+  // Group by day (YYYY-MM-DD) and collect entries with feelings and timestamps
   const byDay = {};
   (resp.Items || []).forEach(item => {
     // Use localDate if available (new entries), fallback to timestamp extraction (old entries)
@@ -72,14 +72,17 @@ async function getEntriesForMonth(event) {
     if (!byDay[day]) {
       byDay[day] = [];
     }
-    byDay[day].push(feelingValue);
+    byDay[day].push({
+      feeling: feelingValue,
+      timestamp: item.timestamp.S
+    });
   });
 
-  // Build array of { date, feelings: [...] }
-  // Frontend will decrypt and calculate average
-  const results = Object.entries(byDay).map(([date, feelings]) => ({
+  // Build array of { date, entries: [{feeling, timestamp}] }
+  // Frontend will decrypt and use real timestamps
+  const results = Object.entries(byDay).map(([date, entries]) => ({
     date,
-    feelings // Array of encrypted or unencrypted feeling values
+    entries // Array of {feeling, timestamp} objects
   }));
 
   return {

@@ -71,6 +71,19 @@ For contributor and AI-session handoff context, see the docs in [`context/`](con
   - 5-minute cache expiration for updates
   - Manual refresh available anytime
 
+### 📈 Stats & Visualization
+- **Interactive Mood Graph**: Recharts-powered line graph with customizable date ranges
+  - Daily average mode: See overall mood trends per day
+  - Individual entries mode: View every mood entry with real timestamps
+  - Responsive design: Automatic label spacing for large datasets
+  - Custom tooltips: Hover to see detailed entry information
+  - Time-aware x-axis: Shows dates for averages, dates + times for individual entries
+- **Real-Time Stats**: Track your progress with live statistics
+  - Current streak (consecutive days tracked)
+  - Total days tracked
+  - Total entries logged
+  - Auto-refreshes after new entries
+
 ### 👤 Account Management
 - **Custom Authentication UI**: Direct Cognito integration with password manager support
   - Email/password login with MFA support
@@ -291,8 +304,7 @@ For contributor and AI-session handoff context, see the docs in [`context/`](con
 |------------|---------|---------|
 | **React** | 19.1.0 | UI framework |
 | **Vite** | 6.3.5 | Build tool & dev server |
-| **React Router** | 7.6.0 | Client-side routing |
-| **@aws-sdk/client-cognito-identity-provider** | Latest | Direct Cognito authentication |
+| **React Router** | 7.6.0 | Client-side routing || **Recharts** | 2.15.0 | Data visualization library || **@aws-sdk/client-cognito-identity-provider** | Latest | Direct Cognito authentication |
 | **Workbox** | PWA service worker |
 
 ### Backend
@@ -334,6 +346,8 @@ mood-tracker/
 │   ├── 📄 DailyQuestions.css        # Sleep section responsive styles
 │   ├── 📄 HistoryCalendar.jsx       # Calendar view with modal
 │   ├── 📄 HistoryCalendar.css       # Calendar styles
+│   ├── 📄 MoodGraph.jsx             # Stats visualization with Recharts
+│   ├── 📄 MoodGraph.css             # Graph page styles
 │   ├── 📄 AccountSettings.jsx       # Profile/password/MFA/delete
 │   ├── 📄 AccountSettings.css       # Settings page styles
 │   ├── 📄 Instructions.jsx          # In-app help page with screenshots
@@ -358,7 +372,7 @@ mood-tracker/
 │   ├── 📄 serverless.yml            # AWS resource definitions
 │   ├── 📄 createEntry.js            # POST /entries (saves localDate, updates UserStats incrementally)
 │   ├── 📄 getTodayEntry.js          # GET /entries/today
-│   ├── 📄 getEntriesForMonth.js     # GET /entries/history (returns encrypted feelings)
+│   ├── 📄 getEntriesForMonth.js     # GET /entries/history (returns entries with feelings + timestamps)
 │   ├── 📄 getEntriesForDay.js       # GET /entries/day?date=YYYY-MM-DD (filters by localDate)
 │   ├── 📄 getUserStats.js           # GET /user/stats (reads from UserStats table)
 │   ├── 📄 calculateStats.js         # Utility: one-time migration for existing users (calculates from full history)
@@ -562,10 +576,20 @@ Authorization: Bearer <token>
 Response: [
   {
     "date": "2025-11-23",
-    "feelings": ["encryptedValue1", "encryptedValue2", ...]
+    "entries": [
+      {
+        "feeling": "encryptedValue1",
+        "timestamp": "2025-11-23T08:30:00.000Z"
+      },
+      {
+        "feeling": "encryptedValue2",
+        "timestamp": "2025-11-23T14:15:00.000Z"
+      }
+    ]
   }
 ]
-Note: Frontend decrypts feelings and calculates averages client-side
+Note: Frontend decrypts feelings and calculates averages client-side.
+Timestamps used for individual entry visualization in stats graph.
 ```
 
 **Get Day Entries**

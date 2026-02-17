@@ -36,10 +36,13 @@ export default function HistoryCalendar() {
   const { user, getAccessToken, getIdToken } = useAuthContext();
   const { stats, loading: statsLoading } = useStats();
 
-  // Determine "today" once, for default values
+  // Determine "today" in user's local timezone
   const today = new Date();
-  const [currentYear, setCurrentYear]   = useState(today.getFullYear());
-  const [currentMonth, setCurrentMonth] = useState(today.getMonth() + 1); // 1–12
+  const localYear = today.getFullYear();
+  const localMonth = today.getMonth() + 1; // JavaScript months are 0-indexed
+  
+  const [currentYear, setCurrentYear]   = useState(localYear);
+  const [currentMonth, setCurrentMonth] = useState(localMonth);
 
   const [entryLoaded, setEntryLoaded]   = useState(false);
   const [entryExists, setEntryExists]   = useState(false);
@@ -145,12 +148,13 @@ useEffect(() => {
         // Decrypt feelings and calculate averages
         const userSub = user.sub;
         
-        for (const { date, feelings } of data) {
-          if (!feelings || feelings.length === 0) continue;
+        for (const { date, entries } of data) {
+          if (!entries || entries.length === 0) continue;
           
-          // Decrypt each feeling
+          // Decrypt each feeling (ignore timestamps for calendar)
           const decryptedFeelings = [];
-          for (const feeling of feelings) {
+          for (const entry of entries) {
+            const feeling = entry.feeling;
             // If it's a number (unencrypted), use it directly
             if (!isNaN(feeling)) {
               decryptedFeelings.push(Number(feeling));

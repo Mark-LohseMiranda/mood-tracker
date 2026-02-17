@@ -5,6 +5,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import FeelingSelector from "./FeelingSelector";
 import DailyQuestions from "./DailyQuestions";
 import HistoryCalendar from "./HistoryCalendar";
+import MoodGraph from "./MoodGraph";
 import AccountSettings from "./AccountSettings";
 import PrivacyPolicy from "./PrivacyPolicy";
 import TermsOfService from "./TermsOfService";
@@ -131,6 +132,7 @@ function App() {
           }
         />
         <Route path="/questions" element={<DailyQuestions />} />
+        <Route path="/stats" element={<MoodGraph />} />
         <Route path="/settings" element={<AccountSettings />} />
         <Route path="/instructions" element={<Instructions />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
