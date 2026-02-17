@@ -48,6 +48,12 @@ When changing calendar/history behavior:
 - Ensure month cache invalidation still occurs after mutations
 - Validate `localDate` logic for timezone-aware grouping
 
+When changing sharing/stats behavior:
+- User stats are calculated server-side from full entry history
+- Stats are recalculated after each new entry in `createEntry.js`
+- Stats are used by ShareButton to generate personalized share messages
+- Unauthenticated users see generic share message without stats
+
 ## Troubleshooting Notes
 
 - If users see stale calendar data, inspect `localStorage.historyCache` handling.

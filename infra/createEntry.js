@@ -6,6 +6,7 @@ const {
   QueryCommand,
 } = require("@aws-sdk/client-dynamodb");
 const { CORS_HEADERS, wrap } = require("./lib/utils");
+const { calculateUserStats } = require("./calculateStats");
 
 const db = new DynamoDBClient({ region: process.env.AWS_REGION });
 
@@ -100,6 +101,9 @@ async function createEntry(event) {
     TableName: 'MoodEntries',
     Item: item
   }));
+
+  // 6) Recalculate and cache user stats
+  const stats = await calculateUserStats(userId);
 
   return {
     statusCode: 201,

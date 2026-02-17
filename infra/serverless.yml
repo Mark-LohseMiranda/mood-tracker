@@ -23,6 +23,7 @@ provider:
           Resource:
             - "arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/MoodEntries"
             - "arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/MoodEntries/index/userIdLocalDateIndex"
+            - "arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/UserStats"
         - Effect: "Allow"
           Action:
             - "s3:PutObject"
@@ -62,6 +63,7 @@ functions:
     package:
       patterns:
         - 'createEntry.js'
+        - 'calculateStats.js'
     events:
       - http:
           path: /entries
@@ -167,6 +169,29 @@ functions:
             authorizerId:
               Ref: ApiGatewayAuthorizer
 
+  getUserStats:
+    handler: getUserStats.handler
+    package:
+      patterns:
+        - 'getUserStats.js'
+        - 'calculateStats.js'
+    events:
+      - http:
+          path: /user/stats
+          method: get
+          cors: 
+            origins:
+              - 'https://myemtee.com'
+              - 'https://www.myemtee.com'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
+
   deleteProfilePicture:
     handler: deleteProfilePicture.handler
     package:
@@ -241,6 +266,18 @@ resources:
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
+    UserStats:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: UserStats
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
         BillingMode: PAY_PER_REQUEST
 
     ProfilePicturesBucket:

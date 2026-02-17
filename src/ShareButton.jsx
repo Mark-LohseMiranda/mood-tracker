@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuthContext } from './AuthContext';
-import { shareApp, isShareSupported, calculateUserStats } from './lib/sharing';
-import { getCachedEntryMetadata } from './lib/indexedDB';
+import { shareApp, isShareSupported } from './lib/sharing';
 
 export default function ShareButton() {
   const [visible, setVisible] = useState(false);
-  const { isAuthenticated, user } = useAuthContext();
+  const { isAuthenticated, user, getIdToken } = useAuthContext();
   const [stats, setStats] = useState({
     entryCount: 0,
     daysTracked: 0,
@@ -25,13 +24,17 @@ export default function ShareButton() {
       }
 
       try {
-        // Load cached entry metadata from IndexedDB
-        const metadata = await getCachedEntryMetadata(user.sub);
-        
-        if (metadata && metadata.length > 0) {
-          const calculatedStats = await calculateUserStats(metadata);
+        // Fetch pre-calculated stats from backend
+        const token = await getIdToken();
+        const apiUrl = `${import.meta.env.VITE_API_URL}/user/stats`;
+        const response = await fetch(apiUrl, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const apiStats = await response.json();
           setStats({
-            ...calculatedStats,
+            ...apiStats,
             isAuthenticated: true
           });
         } else {
@@ -39,13 +42,13 @@ export default function ShareButton() {
         }
       } catch (error) {
         // Silently fail, just show authenticated state
-        console.debug('Stats calculation failed:', error);
+        console.debug('Stats loading failed:', error);
         setStats(prev => ({ ...prev, isAuthenticated: true }));
       }
     };
 
     loadStats();
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, getIdToken]);
 
   const handleShare = async () => {
     await shareApp(stats);

@@ -103,6 +103,20 @@ async function deleteAccount(event) {
       throw new Error('Failed to delete mood entries: ' + dbError.message);
     }
     
+    // Delete user stats from UserStats table
+    try {
+      await db.send(new DeleteItemCommand({
+        TableName: 'UserStats',
+        Key: {
+          userId: { S: userId }
+        }
+      }));
+      console.log('Successfully deleted user stats');
+    } catch (statsError) {
+      console.error('Error deleting user stats:', statsError);
+      // Don't throw - stats cleanup is not critical
+    }
+    
     // Note: Cognito user deletion is handled by the frontend directly
     // to avoid token validation issues
     

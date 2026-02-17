@@ -87,7 +87,16 @@ For contributor and AI-session handoff context, see the docs in [`context/`](con
 - **Account Deletion**: Complete data removal (S3, DynamoDB, Cognito)
 - **Signup Notifications**: Automatic email alerts to admin when new users register (via SES)
 
-### 🔒 Security & Privacy
+### � Sharing & Social
+- **Web Share API**: Native iOS/Android share sheet integration for easy sharing
+- **Personalized Share Messages**: 
+  - **Unauthenticated users**: Generic message about the app
+  - **Authenticated users**: Personalized message with tracking stats (streak, days tracked, entry count)
+- **Server-Side Stats**: All stats calculated from full entry history, not limited to current month
+- **Floating Share Button**: Easy-access share button positioned for mobile PWA use
+- **Smart Stat Updates**: Stats automatically recalculated after each new entry
+
+### �🔒 Security & Privacy
 - **End-to-End Encryption**: Sensitive data (notes, feelings, consumption) encrypted client-side before storage
 - **Zero-Knowledge Privacy**: Encryption keys never leave your browser - even developers can't read your private data
 - **AWS Cognito Authentication**: Secure user authentication with MFA support
@@ -316,10 +325,13 @@ mood-tracker/
 │   ├── 📄 Disclaimer.jsx            # Disclaimer embed
 │   ├── 📄 CookiePolicy.jsx          # Cookie policy embed
 │   ├── 📄 FeelingSelector.jsx       # Emoji mood selector
+│   ├── 📄 ShareButton.jsx           # Floating Web Share API button
 │   ├── 📄 index.css                 # Base styles, responsive layout fixes
 │   ├── 📂 lib/                      # Utility libraries
 │   │   ├── 📄 auth.js               # Custom Cognito authentication
-│   │   └── 📄 encryption.js         # Client-side AES-256-GCM encryption
+│   │   ├── 📄 encryption.js         # Client-side AES-256-GCM encryption
+│   │   ├── 📄 sharing.js            # Web Share API utilities and stats functions
+│   │   └── 📄 indexedDB.js          # [DEPRECATED] Replaced by server-side stats
 │   └── 📂 assets/                   # Static assets
 │
 ├── 📂 infra/                        # Backend infrastructure
@@ -328,6 +340,8 @@ mood-tracker/
 │   ├── 📄 getTodayEntry.js          # GET /entries/today
 │   ├── 📄 getEntriesForMonth.js     # GET /entries/history (returns encrypted feelings)
 │   ├── 📄 getEntriesForDay.js       # GET /entries/day?date=YYYY-MM-DD (filters by localDate)
+│   ├── 📄 getUserStats.js           # GET /user/stats (returns pre-calculated stats)
+│   ├── 📄 calculateStats.js         # Utility: calculates streak, daysTracked, entryCount
 │   ├── 📄 getProfilePictureUploadUrl.js  # GET /profile/picture-upload-url
 │   ├── 📄 deleteProfilePicture.js   # DELETE /profile/picture
 │   ├── 📄 deleteAccount.js          # POST /account
@@ -540,7 +554,22 @@ Authorization: Bearer <token>
 Response: Array of all entries for that day
 ```
 
-#### 👤 Profile Management
+#### � User Stats
+
+**Get User Stats**
+```http
+GET /user/stats
+Authorization: Bearer <token>
+
+Response: {
+  "entryCount": 42,           // Total number of entries
+  "daysTracked": 35,          // Number of unique days with entries
+  "streak": 7                 // Current consecutive days streak
+}
+Note: Stats are calculated from all user entries and cached on the backend
+```
+
+#### �👤 Profile Management
 
 **Get Profile Picture Upload URL**
 ```http

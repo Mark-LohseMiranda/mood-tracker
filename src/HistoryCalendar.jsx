@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuthContext } from './AuthContext';
 import './HistoryCalendar.css';
 import { decryptEntries, decryptFeeling } from './lib/encryption';
-import { cacheEntryMetadata } from './lib/indexedDB';
 
 // Month names lookup
 const MONTH_NAMES = [
@@ -244,9 +243,6 @@ useEffect(() => {
         // Decrypt all entries before displaying
         const decryptedEntries = await decryptEntries(data, userSub);
         setDayEntries(decryptedEntries);
-        
-        // Cache only entry metadata (safe data)
-        await cacheEntryMetadata(decryptedEntries, userSub);
       } else {
         setDayEntries([]);
       }
