@@ -40,25 +40,40 @@ async function calculateUserStats(userId) {
     }
 
     // Get unique dates and entry count
-    const uniqueDates = new Set(entries.map(e => e.localDate.S));
+    const uniqueDates = new Set(entries.map(e => e.localDate?.S).filter(Boolean));
     const daysTracked = uniqueDates.size;
     const entryCount = entries.length;
 
-    // Calculate streak: consecutive days from today backwards
+    // Calculate streak: consecutive days backwards from most recent entry
     const sortedDates = Array.from(uniqueDates).sort().reverse(); // newest first
     let streak = 0;
-    let currentDate = new Date();
-    currentDate.setUTCHours(0, 0, 0, 0);
+    
+    if (sortedDates.length === 0) {
+      return { entryCount, daysTracked, streak };
+    }
 
-    for (const dateStr of sortedDates) {
-      const entryDate = new Date(dateStr + 'T00:00:00Z');
-      const daysDiff = Math.floor((currentDate - entryDate) / (1000 * 60 * 60 * 24));
+    // Helper: get date one day before given YYYY-MM-DD string
+    const getPreviousDay = (dateStr) => {
+      const d = new Date(dateStr + 'T12:00:00'); // Use noon to avoid timezone issues
+      d.setDate(d.getDate() - 1);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
 
-      if (daysDiff === streak) {
+    // Start from most recent entry date
+    let expectedDate = sortedDates[0];
+    streak = 1; // First date counts
+    
+    // Count consecutive days backwards from most recent
+    for (let i = 1; i < sortedDates.length; i++) {
+      const previousDay = getPreviousDay(expectedDate);
+      if (sortedDates[i] === previousDay) {
         streak++;
-        currentDate.setUTCDate(currentDate.getUTCDate() - 1);
+        expectedDate = previousDay;
       } else {
-        break; // Streak is broken
+        break; // Streak broken
       }
     }
 

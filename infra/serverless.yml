@@ -25,6 +25,13 @@ provider:
             - "arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/MoodEntries/index/userIdLocalDateIndex"
         - Effect: "Allow"
           Action:
+            - "dynamodb:GetItem"
+            - "dynamodb:PutItem"
+            - "dynamodb:UpdateItem"
+          Resource:
+            - "arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/UserStats"
+        - Effect: "Allow"
+          Action:
             - "s3:PutObject"
             - "s3:PutObjectAcl"
             - "s3:DeleteObject"
@@ -62,7 +69,6 @@ functions:
     package:
       patterns:
         - 'createEntry.js'
-        - 'calculateStats.js'
     events:
       - http:
           path: /entries
@@ -265,6 +271,18 @@ resources:
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
+    UserStatsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: UserStats
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
         BillingMode: PAY_PER_REQUEST
 
     ProfilePicturesBucket:

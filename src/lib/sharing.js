@@ -13,19 +13,20 @@ export async function shareApp(stats = {}) {
 
   console.log('📤 shareApp called with:', { entryCount, daysTracked, streak, isAuthenticated });
 
-  let message = '🌟 Check out My Mood Tracker! ';
+  let message;
   
   if (isAuthenticated && entryCount > 0) {
     const parts = [];
     if (daysTracked > 0) parts.push(`${daysTracked} days tracked`);
     if (streak > 0) parts.push(`${streak} day streak`);
     if (entryCount > 0) parts.push(`${entryCount} entries`);
-    if (parts.length > 0) {
-      message += `I've been: ${parts.join(', ')}. `;
-    }
+    
+    // Personalized message with stats
+    message = `🌟 Check out My Mood Tracker - a secure, encrypted mood & sleep tracker! My stats: ${parts.join(', ')}. Try it out!`;
+  } else {
+    // Generic message for non-authenticated users
+    message = '🌟 Check out My Mood Tracker! A secure, encrypted mood & sleep tracker. Try it out!';
   }
-
-  message += 'A secure, encrypted mood & sleep tracker. Try it out!';
 
   console.log('📤 Final share message:', message);
   try {

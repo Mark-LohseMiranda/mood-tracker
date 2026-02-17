@@ -1,7 +1,12 @@
 "use strict";
 
 const { SESClient, SendEmailCommand } = require("@aws-sdk/client-ses");
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
+
 const ses = new SESClient({ region: process.env.AWS_REGION });
+const client = new DynamoDBClient({ region: process.env.AWS_REGION });
+const db = DynamoDBDocumentClient.from(client);
 
 /**
  * Cognito PostConfirmation trigger
@@ -13,6 +18,28 @@ exports.handler = async (event) => {
   const { email, name, sub } = event.request.userAttributes;
   const signupTime = new Date().toISOString();
 
+  // Initialize user stats in DynamoDB
+  try {
+    await db.send(new PutCommand({
+      TableName: "UserStats",
+      Item: {
+        userId: sub,
+        entryCount: 0,
+        daysTracked: 0,
+        streak: 0,
+        lastEntryDate: null,
+        lastStreakDate: null,
+        createdAt: signupTime,
+        updatedAt: signupTime
+      }
+    }));
+    console.log(`Initialized stats for user: ${sub}`);
+  } catch (error) {
+    console.error("Failed to initialize user stats:", error);
+    // Don't fail signup if stats init fails
+  }
+
+  // Send signup notification email
   try {
     await ses.send(new SendEmailCommand({
       Source: "noreply@myemtee.com",

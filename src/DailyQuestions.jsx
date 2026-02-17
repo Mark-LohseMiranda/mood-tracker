@@ -44,6 +44,7 @@ export default function DailyQuestions() {
 
   // State
   const [entryLoaded, setEntryLoaded] = useState(false);
+  const [sleepCheckLoading, setSleepCheckLoading] = useState(true); // Loading state for sleep check
   const [hasSleepData, setHasSleepData] = useState(false);
   const [showSleepPrompt, setShowSleepPrompt] = useState(false);
   const [userSkippedSleep, setUserSkippedSleep] = useState(false);
@@ -100,6 +101,7 @@ export default function DailyQuestions() {
         setShowSleepPrompt(true);
       } finally {
         setEntryLoaded(true);
+        setSleepCheckLoading(false); // Sleep check complete, ready to show content
       }
     })();
   }, [user, todayKey]);
@@ -214,8 +216,24 @@ export default function DailyQuestions() {
 
   return (
     <div className="daily-questions-container">
+      {/* Sleep Check Loading State */}
+      {sleepCheckLoading && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <div style={{
+                fontSize: '3rem',
+                marginBottom: '1rem',
+                animation: 'pulse 1.5s ease-in-out infinite'
+              }}>⏳</div>
+              <p style={{ fontSize: '1.1rem', color: '#666' }}>Checking sleep data...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sleep Tracking Prompt Modal */}
-      {showSleepPrompt && !hasSleepData && (
+      {!sleepCheckLoading && showSleepPrompt && !hasSleepData && (
         <div className="modal-overlay">
           <div className="modal-content">
             <h2>{getGreeting()}! Did you get some sleep last night?</h2>

@@ -50,8 +50,8 @@ export function StatsProvider({ children }) {
 
   // Invalidate stats cache (call after entry creation)
   const invalidateStats = () => {
-    setLastFetch(0); // Force refetch on next focus
-    console.log('🔄 StatsContext: Cache invalidated');
+    console.log('🔄 StatsContext: Cache invalidated, fetching new stats');
+    fetchStats(); // Immediately fetch updated stats
   };
 
   // Fetch stats on component mount

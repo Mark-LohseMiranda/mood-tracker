@@ -356,11 +356,11 @@ useEffect(() => {
       <div style={{
         marginTop: '1.5rem',
         padding: '1rem',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: 'var(--bg-secondary)',
         borderRadius: '8px',
         textAlign: 'center',
         fontSize: '0.95rem',
-        color: '#333'
+        color: 'var(--text-primary)'
       }}>
         {statsLoading ? (
           <p style={{ margin: 0 }}>Loading stats...</p>
@@ -369,7 +369,7 @@ useEffect(() => {
             <strong>📊 Your Stats:</strong> {stats.daysTracked} days tracked · {stats.streak} day streak · {stats.entryCount} entries
           </p>
         ) : (
-          <p style={{ margin: 0, color: '#999' }}>Stats unavailable</p>
+          <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Stats unavailable</p>
         )}
       </div>
 

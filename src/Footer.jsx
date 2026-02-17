@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 
 // App version - update this manually when deploying new versions
-const APP_VERSION = "1.17";
+const APP_VERSION = "1.18";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();

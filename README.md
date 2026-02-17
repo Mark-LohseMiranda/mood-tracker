@@ -92,11 +92,12 @@ For contributor and AI-session handoff context, see the docs in [`context/`](con
 - **Personalized Share Messages**: 
   - **Unauthenticated users**: Generic message about the app
   - **Authenticated users**: Personalized message with tracking stats (streak, days tracked, entry count)
-- **Server-Side Stats**: All stats calculated from full entry history, not limited to current month
-  - Stats calculated on-demand from all user entries for accuracy
+- **Incremental Stats System**: Fast, scalable user statistics stored in DynamoDB
+  - Stats updated incrementally on each entry (O(1) operation)
+  - No performance degradation as users accumulate years of data
   - Shared across app components via centralized StatsContext
 - **Automatic Stat Refresh**: Stats automatically invalidated and refreshed after new entries
-  - On-demand calculation ensures current data
+  - Instant updates after entry creation
   - Refreshes when app regains focus (tab switch, app foregrounded)
   - Minimal API calls with smart caching
 - **Floating Share Button**: Easy-access share button positioned for mobile PWA use
@@ -199,7 +200,7 @@ For contributor and AI-session handoff context, see the docs in [`context/`](con
          ▼                      ▼                    ▼
 ┌─────────────────┐  ┌──────────────────┐  ┌────────────────┐
 │   DynamoDB      │  │   S3 Bucket      │  │   Cognito      │
-│   (MoodEntries) │  │   (Profile Pics) │  │   (User Mgmt)  │
+│  (MoodEntries)  │  │  (Profile Pics)  │  │  (User Mgmt)   │
 │                 │  │                  │  │                │
 │ • userId (PK)   │  │ • Public Read    │  │ • GetUser      │
 │ • timestamp(SK) │  │ • User Prefix    │  │ • DeleteUser   │
@@ -209,6 +210,16 @@ For contributor and AI-session handoff context, see the docs in [`context/`](con
 │ • consumed(enc) │  │                  │  │                │
 │ • notes (enc)   │  │                  │  │                │
 └─────────────────┘  └──────────────────┘  └────────────────┘
+┌─────────────────┐
+│   DynamoDB      │
+│   (UserStats)   │
+│                 │
+│ • userId (PK)   │
+│ • entryCount    │
+│ • daysTracked   │
+│ • streak        │
+│ • lastEntryDate │
+└─────────────────┘
 ```
 
 ### Data Flow
@@ -232,8 +243,9 @@ For contributor and AI-session handoff context, see the docs in [`context/`](con
    - Lambda validates localDate is provided and checks for existing sleep data on the same local date
    - If user tries to add sleep when sleep already exists: Returns 400 error
    - Lambda stores entry in DynamoDB with UTC timestamp and localDate (for timezone-aware queries)
+   - Lambda updates UserStats incrementally (entryCount +1, daysTracked +1 if first entry of day, streak calculation)
    - Response includes `needsSleepTracking` flag for frontend status
-   - Response returned to frontend → UI updates → Cache invalidated for calendar
+   - Response returned to frontend → UI updates → Stats refreshed → Cache invalidated for calendar
 
 3. **Profile Picture Upload**:
    - User selects image → Frontend requests presigned URL
@@ -251,6 +263,7 @@ For contributor and AI-session handoff context, see the docs in [`context/`](con
 5. **New User Signup Notification**:
    - User completes registration and confirms email
    - Cognito triggers postConfirmation Lambda
+   - Lambda initializes UserStats record (entryCount: 0, daysTracked: 0, streak: 0)
    - Lambda sends formatted email to info@myemtee.com via SES
    - Email includes user details (email, name, user ID, timestamp)
    - Signup flow continues normally even if notification fails
@@ -343,16 +356,16 @@ mood-tracker/
 │
 ├── 📂 infra/                        # Backend infrastructure
 │   ├── 📄 serverless.yml            # AWS resource definitions
-│   ├── 📄 createEntry.js            # POST /entries (saves localDate)
+│   ├── 📄 createEntry.js            # POST /entries (saves localDate, updates UserStats incrementally)
 │   ├── 📄 getTodayEntry.js          # GET /entries/today
 │   ├── 📄 getEntriesForMonth.js     # GET /entries/history (returns encrypted feelings)
 │   ├── 📄 getEntriesForDay.js       # GET /entries/day?date=YYYY-MM-DD (filters by localDate)
-│   ├── 📄 getUserStats.js           # GET /user/stats (calculates stats on-demand from full history)
-│   ├── 📄 calculateStats.js         # Utility: calculates streak, daysTracked, entryCount
+│   ├── 📄 getUserStats.js           # GET /user/stats (reads from UserStats table)
+│   ├── 📄 calculateStats.js         # Utility: one-time migration for existing users (calculates from full history)
 │   ├── 📄 getProfilePictureUploadUrl.js  # GET /profile/picture-upload-url
 │   ├── 📄 deleteProfilePicture.js   # DELETE /profile/picture
 │   ├── 📄 deleteAccount.js          # POST /account
-│   ├── 📄 postConfirmation.js       # Cognito trigger (sends signup emails)
+│   ├── 📄 postConfirmation.js       # Cognito trigger (initializes UserStats, sends signup emails)
 │   ├── 📄 package.json              # Lambda dependencies
 │   └── 📂 lib/
 │       └── 📄 utils.js              # Shared utilities (CORS, error handler)
@@ -443,9 +456,11 @@ npx serverless deploy
 This deploys:
 - 12 Lambda functions (individually packaged)
   - 11 API endpoints (mood tracking, profile, device management, account)
-  - 1 Cognito trigger (postConfirmation)
+  - 1 Cognito trigger (postConfirmation - initializes UserStats)
 - API Gateway REST API
-- DynamoDB table with GSI: `userIdLocalDateIndex` (userId PK, localDate SK) for timezone-aware queries
+- DynamoDB tables:
+  - `MoodEntries` with GSI: `userIdLocalDateIndex` (userId PK, localDate SK) for timezone-aware queries
+  - `UserStats` for incremental tracking stats (entryCount, daysTracked, streak)
 - S3 bucket for profile pictures
 - IAM roles and policies
 - Gateway responses with CORS
@@ -573,7 +588,8 @@ Response: {
   "daysTracked": 35,          // Number of unique days with entries
   "streak": 7                 // Current consecutive days streak
 }
-Note: Stats are calculated on-demand from all user entries, ensuring fresh tracking data
+Note: Stats are stored in UserStats table and updated incrementally on each entry creation.
+Existing users are auto-migrated on first request (one-time calculation from full history).
 ```
 
 #### �👤 Profile Management
