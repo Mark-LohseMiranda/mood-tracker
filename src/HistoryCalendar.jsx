@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthContext } from './AuthContext';
+import { useStats } from './StatsContext';
 import './HistoryCalendar.css';
 import { decryptEntries, decryptFeeling } from './lib/encryption';
 
@@ -33,6 +34,7 @@ function generateCalendarDates(year, month) {
 
 export default function HistoryCalendar() {
   const { user, getAccessToken, getIdToken } = useAuthContext();
+  const { stats, loading: statsLoading } = useStats();
 
   // Determine "today" once, for default values
   const today = new Date();
@@ -348,6 +350,27 @@ useEffect(() => {
             </div>
           );
         })}
+      </div>
+
+      {/* Stats display row */}
+      <div style={{
+        marginTop: '1.5rem',
+        padding: '1rem',
+        backgroundColor: '#f5f5f5',
+        borderRadius: '8px',
+        textAlign: 'center',
+        fontSize: '0.95rem',
+        color: '#333'
+      }}>
+        {statsLoading ? (
+          <p style={{ margin: 0 }}>Loading stats...</p>
+        ) : stats ? (
+          <p style={{ margin: 0 }}>
+            <strong>📊 Your Stats:</strong> {stats.daysTracked} days tracked · {stats.streak} day streak · {stats.entryCount} entries
+          </p>
+        ) : (
+          <p style={{ margin: 0, color: '#999' }}>Stats unavailable</p>
+        )}
       </div>
 
       {/* Modal for day entries */}

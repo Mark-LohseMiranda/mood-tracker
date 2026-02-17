@@ -1,57 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useAuthContext } from './AuthContext';
+import { useStats } from './StatsContext';
 import { shareApp, isShareSupported } from './lib/sharing';
 
 export default function ShareButton() {
   const [visible, setVisible] = useState(false);
-  const { isAuthenticated, user, getIdToken } = useAuthContext();
-  const [stats, setStats] = useState({
-    entryCount: 0,
-    daysTracked: 0,
-    streak: 0,
-    isAuthenticated: false
-  });
+  const { isAuthenticated } = useAuthContext();
+  const { stats, loading } = useStats();
 
   useEffect(() => {
     setVisible(isShareSupported());
   }, []);
 
-  useEffect(() => {
-    const loadStats = async () => {
-      if (!isAuthenticated || !user) {
-        setStats(prev => ({ ...prev, isAuthenticated: false }));
-        return;
-      }
-
-      try {
-        // Fetch pre-calculated stats from backend
-        const token = await getIdToken();
-        const apiUrl = `${import.meta.env.VITE_API_URL}/user/stats`;
-        const response = await fetch(apiUrl, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-          const apiStats = await response.json();
-          setStats({
-            ...apiStats,
-            isAuthenticated: true
-          });
-        } else {
-          setStats(prev => ({ ...prev, isAuthenticated: true }));
-        }
-      } catch (error) {
-        // Silently fail, just show authenticated state
-        console.debug('Stats loading failed:', error);
-        setStats(prev => ({ ...prev, isAuthenticated: true }));
-      }
-    };
-
-    loadStats();
-  }, [isAuthenticated, user, getIdToken]);
-
   const handleShare = async () => {
-    await shareApp(stats);
+    const shareData = {
+      entryCount: stats?.entryCount || 0,
+      daysTracked: stats?.daysTracked || 0,
+      streak: stats?.streak || 0,
+      isAuthenticated
+    };
+    console.log('🔘 Share button clicked with stats:', shareData);
+    await shareApp(shareData);
   };
 
   if (!visible) return null;

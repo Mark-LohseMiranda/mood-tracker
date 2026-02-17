@@ -6,7 +6,6 @@ const {
   QueryCommand,
 } = require("@aws-sdk/client-dynamodb");
 const { CORS_HEADERS, wrap } = require("./lib/utils");
-const { calculateUserStats } = require("./calculateStats");
 
 const db = new DynamoDBClient({ region: process.env.AWS_REGION });
 
@@ -97,21 +96,18 @@ async function createEntry(event) {
   }
 
   // 5) Insert a brand-new item
+  await db.sendentry
   await db.send(new PutItemCommand({
     TableName: 'MoodEntries',
     Item: item
   }));
-
-  // 6) Recalculate and cache user stats
-  const stats = await calculateUserStats(userId);
 
   return {
     statusCode: 201,
     headers:    CORS_HEADERS,
     body:       JSON.stringify({
       message: "Entry created successfully.",
-      needsSleepTracking: !hasSleepData // Frontend uses this to prompt user
-    })
+      needsSleepTracking: !hasSleepData
   };
 }
 

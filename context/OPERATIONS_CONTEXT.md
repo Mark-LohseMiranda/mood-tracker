@@ -49,9 +49,8 @@ When changing calendar/history behavior:
 - Validate `localDate` logic for timezone-aware grouping
 
 When changing sharing/stats behavior:
-- User stats are calculated server-side from full entry history
-- Stats are recalculated after each new entry in `createEntry.js`
-- Stats are used by ShareButton to generate personalized share messages
+- User stats are calculated **on-demand** from full entry history when `/user/stats` is called
+- Stats reflect current streak based on consecutive days from today
 - Unauthenticated users see generic share message without stats
 
 ## Troubleshooting Notes

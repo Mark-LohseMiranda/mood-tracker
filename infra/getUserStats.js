@@ -6,7 +6,9 @@ const { CORS_HEADERS, wrap } = require("./lib/utils");
 async function getUserStats(event) {
   const userId = event.requestContext.authorizer.claims.sub;
 
-  // Calculate stats from all user entries
+  // Recalculate stats on-demand from all user entries
+  // This ensures stats are always current (e.g., streak properly reflects consecutive days)
+  // Users stay logged in via 30-day refresh token, so fresh calculation on share is worth the cost
   const stats = await calculateUserStats(userId);
 
   return {

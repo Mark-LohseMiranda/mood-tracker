@@ -93,8 +93,13 @@ For contributor and AI-session handoff context, see the docs in [`context/`](con
   - **Unauthenticated users**: Generic message about the app
   - **Authenticated users**: Personalized message with tracking stats (streak, days tracked, entry count)
 - **Server-Side Stats**: All stats calculated from full entry history, not limited to current month
+  - Stats calculated on-demand from all user entries for accuracy
+  - Shared across app components via centralized StatsContext
+- **Automatic Stat Refresh**: Stats automatically invalidated and refreshed after new entries
+  - On-demand calculation ensures current data
+  - Refreshes when app regains focus (tab switch, app foregrounded)
+  - Minimal API calls with smart caching
 - **Floating Share Button**: Easy-access share button positioned for mobile PWA use
-- **Smart Stat Updates**: Stats automatically recalculated after each new entry
 
 ### �🔒 Security & Privacy
 - **End-to-End Encryption**: Sensitive data (notes, feelings, consumption) encrypted client-side before storage
@@ -326,6 +331,8 @@ mood-tracker/
 │   ├── 📄 CookiePolicy.jsx          # Cookie policy embed
 │   ├── 📄 FeelingSelector.jsx       # Emoji mood selector
 │   ├── 📄 ShareButton.jsx           # Floating Web Share API button
+│   ├── 📄 AuthContext.jsx           # Auth state management context
+│   ├── 📄 StatsContext.jsx          # Centralized user stats context (focus-based refresh)
 │   ├── 📄 index.css                 # Base styles, responsive layout fixes
 │   ├── 📂 lib/                      # Utility libraries
 │   │   ├── 📄 auth.js               # Custom Cognito authentication
@@ -340,7 +347,7 @@ mood-tracker/
 │   ├── 📄 getTodayEntry.js          # GET /entries/today
 │   ├── 📄 getEntriesForMonth.js     # GET /entries/history (returns encrypted feelings)
 │   ├── 📄 getEntriesForDay.js       # GET /entries/day?date=YYYY-MM-DD (filters by localDate)
-│   ├── 📄 getUserStats.js           # GET /user/stats (returns pre-calculated stats)
+│   ├── 📄 getUserStats.js           # GET /user/stats (calculates stats on-demand from full history)
 │   ├── 📄 calculateStats.js         # Utility: calculates streak, daysTracked, entryCount
 │   ├── 📄 getProfilePictureUploadUrl.js  # GET /profile/picture-upload-url
 │   ├── 📄 deleteProfilePicture.js   # DELETE /profile/picture
@@ -566,7 +573,7 @@ Response: {
   "daysTracked": 35,          // Number of unique days with entries
   "streak": 7                 // Current consecutive days streak
 }
-Note: Stats are calculated from all user entries and cached on the backend
+Note: Stats are calculated on-demand from all user entries, ensuring fresh tracking data
 ```
 
 #### �👤 Profile Management
@@ -645,6 +652,12 @@ Sleep tracking is optimized for users with irregular sleep schedules (shift work
 - **Password Manager Support**: Proper autocomplete attributes for 1Password, LastPass, Bitwarden
 - **JWT Tokens**: Short-lived access tokens (60 minutes), long-lived refresh tokens (30 days)
 - **Automatic Token Refresh**: Tokens refreshed before expiration for seamless 30-day sessions
+  - Token expiration checked on every API call
+  - Refresh fails gracefully with clear error messages
+- **Token Revocation Detection**: Active session validation catches revoked/invalidated tokens
+  - App validates token status with Cognito on auth check
+  - Revoked tokens automatically force re-login
+  - No stale "logged in" state with invalid tokens
 - **Token Validation**: API Gateway Cognito authorizer validates JWTs
 - **Persistent Storage**: IndexedDB for auth tokens (survives PWA restarts on iOS/Android/macOS)
   - Access, ID, and refresh tokens stored in IndexedDB for PWA persistence

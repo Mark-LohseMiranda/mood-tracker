@@ -22,16 +22,6 @@ Common attributes:
 - `notes` (encrypted string)
 - `sleepQuality`, `sleepDuration` (first entry of day)
 
-### UserStats Table
-Stores pre-calculated user statistics for sharing:
-- Partition key: `userId`
-
-Attributes:
-- `entryCount` (Number) - total entries created
-- `daysTracked` (Number) - unique days with at least one entry
-- `streak` (Number) - current consecutive days streak
-- `lastUpdated` (ISO timestamp) - when stats were last recalculated
-
 ## Frontend Data Flow
 
 Entry creation path:
@@ -48,9 +38,10 @@ History path:
 
 Share stats path:
 1. ShareButton is visible on iOS/Android with Web Share API
-2. When clicked, authenticated users fetch `/user/stats` (pre-calculated server-side)
-3. Unauthenticated users see generic share message
-4. Web Share API opens native share sheet with personalized message: "I've been: X days tracked, Y day streak, Z entries"
+2. When clicked, authenticated users call `/user/stats` endpoint
+3. Backend **calculates stats on-demand** from all MoodEntries (full history, not limited to current month)
+4. Stats are returned with fresh current streak
+5. Web Share API opens native share sheet with personalized message: "I've been: X days tracked, Y day streak, Z entries"
 
 ## Backend Handler Pattern
 

@@ -373,15 +373,24 @@ export async function signOut() {
     const accessToken = await getItem(ACCESS_TOKEN_KEY);
     
     if (accessToken) {
-      const command = new GlobalSignOutCommand({
-        AccessToken: accessToken,
-      });
-      await client.send(command);
+      try {
+        const command = new GlobalSignOutCommand({
+          AccessToken: accessToken,
+        });
+        await client.send(command);
+      } catch (error) {
+        // Token might already be revoked, that's okay - just log it
+        if (error.message?.includes('Access Token has been revoked')) {
+          console.log('Token already revoked, proceeding with logout');
+        } else {
+          console.error('Sign out error:', error);
+        }
+      }
     }
   } catch (error) {
-    console.error('Sign out error:', error);
+    console.error('Unexpected sign out error:', error);
   } finally {
-    // Clear all tokens
+    // Always clear all tokens
     await clearTokens();
   }
 }
@@ -393,8 +402,12 @@ export async function getCurrentUser() {
   try {
     let accessToken = await getItem(ACCESS_TOKEN_KEY);
     if (!accessToken) {
-      await refreshSession();
-      accessToken = await getItem(ACCESS_TOKEN_KEY);
+      try {
+        await refreshSession();
+        accessToken = await getItem(ACCESS_TOKEN_KEY);
+      } catch (e) {
+        return null;
+      }
       if (!accessToken) {
         return null;
       }
@@ -404,19 +417,30 @@ export async function getCurrentUser() {
     const tokenPayload = parseJwt(accessToken);
     if (tokenPayload.exp * 1000 < Date.now()) {
       // Token expired, try to refresh
-      await refreshSession();
-      accessToken = await getItem(ACCESS_TOKEN_KEY);
+      try {
+        await refreshSession();
+        accessToken = await getItem(ACCESS_TOKEN_KEY);
+      } catch (e) {
+        return null;
+      }
       if (!accessToken) {
         return null;
       }
     }
 
-    let userInfo = await getItem(USER_INFO_KEY);
-    if (!userInfo) {
+    // Validate token is still active with Cognito (catches revoked tokens)
+    // Always call fetchUserInfo to verify token hasn't been revoked
+    try {
       await fetchUserInfo(accessToken);
-      userInfo = await getItem(USER_INFO_KEY);
+    } catch (error) {
+      // Token is revoked/invalid, clear all tokens and return null
+      console.log('Token validation failed, clearing session');
+      await clearTokens();
+      return null;
     }
 
+    // Token is valid, get cached user info
+    let userInfo = await getItem(USER_INFO_KEY);
     return userInfo ? JSON.parse(userInfo) : null;
   } catch (error) {
     console.error('Get current user error:', error);
@@ -472,7 +496,9 @@ export async function isAuthenticated() {
  */
 export async function getAccessToken() {
   const accessToken = await getItem(ACCESS_TOKEN_KEY);
-  if (!accessToken) return null;
+  if (!accessToken) {
+    throw new Error('Not authenticated - no access token found');
+  }
 
   // Check if token is expired
   const tokenPayload = parseJwt(accessToken);
@@ -480,10 +506,14 @@ export async function getAccessToken() {
     // Token expired, try to refresh
     try {
       await refreshSession();
-      return await getItem(ACCESS_TOKEN_KEY);
+      const refreshedToken = await getItem(ACCESS_TOKEN_KEY);
+      if (!refreshedToken) {
+        throw new Error('Failed to refresh access token - no token after refresh');
+      }
+      return refreshedToken;
     } catch (error) {
       console.error('Failed to refresh access token:', error);
-      return null;
+      throw error; // Propagate error so caller knows auth failed
     }
   }
 
@@ -495,7 +525,9 @@ export async function getAccessToken() {
  */
 export async function getIdToken() {
   const idToken = await getItem(ID_TOKEN_KEY);
-  if (!idToken) return null;
+  if (!idToken) {
+    throw new Error('Not authenticated - no ID token found');
+  }
 
   // Check if token is expired
   const tokenPayload = parseJwt(idToken);
@@ -503,10 +535,14 @@ export async function getIdToken() {
     // Token expired, try to refresh
     try {
       await refreshSession();
-      return await getItem(ID_TOKEN_KEY);
+      const refreshedToken = await getItem(ID_TOKEN_KEY);
+      if (!refreshedToken) {
+        throw new Error('Failed to refresh ID token - no token after refresh');
+      }
+      return refreshedToken;
     } catch (error) {
       console.error('Failed to refresh id token:', error);
-      return null;
+      throw error; // Propagate error so caller knows auth failed
     }
   }
 
@@ -565,6 +601,14 @@ async function fetchUserInfo(accessToken) {
     await setItem(USER_INFO_KEY, JSON.stringify(userInfo));
   } catch (error) {
     console.error('Fetch user info error:', error);
+    
+    // If token is revoked or invalid, clear cached user info
+    if (error.name === 'NotAuthorizedException' || error.message?.includes('Access Token has been revoked')) {
+      console.log('Token is revoked/invalid, clearing user info');
+      await removeItem(USER_INFO_KEY);
+    }
+    
+    throw error; // Propagate auth errors so caller knows session is invalid
   }
 }
 

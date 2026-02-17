@@ -21,7 +21,7 @@ Frontend:
 Backend:
 - AWS Lambda (Node.js 22)
 - API Gateway REST API
-- DynamoDB tables: `MoodEntries`, `UserStats`
+- DynamoDB table: `MoodEntries`
 - S3 for profile pictures
 - Cognito User Pool authorizer
 - Serverless Framework in `infra/`
@@ -41,7 +41,7 @@ Backend:
 - Calendar and history behavior depends on `localDate` and decrypted feelings.
 - Month cache in `localStorage.historyCache` is invalidated on new entry creation.
 - Login and MFA success clear history cache for multi-device freshness.
-- User stats (streak, daysTracked, entryCount) are calculated server-side from full entry history.
-- Stats are recalculated in `UserStats` table whenever a new entry is created.
+- User stats (streak, daysTracked, entryCount) are calculated **on-demand** when user clicks share.
+- Stats are computed from full entry history, ensuring accurate current streak.
 - ShareButton on iOS/Android users calls `/user/stats` API to get personalized share message.
 - Unauthenticated users see generic share message without stats.

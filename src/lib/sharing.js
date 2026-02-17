@@ -11,6 +11,8 @@ export async function shareApp(stats = {}) {
 
   const { entryCount = 0, daysTracked = 0, streak = 0, isAuthenticated = false } = stats;
 
+  console.log('📤 shareApp called with:', { entryCount, daysTracked, streak, isAuthenticated });
+
   let message = '🌟 Check out My Mood Tracker! ';
   
   if (isAuthenticated && entryCount > 0) {
@@ -25,6 +27,7 @@ export async function shareApp(stats = {}) {
 
   message += 'A secure, encrypted mood & sleep tracker. Try it out!';
 
+  console.log('📤 Final share message:', message);
   try {
     await navigator.share({
       title: 'My Mood Tracker',
@@ -46,54 +49,4 @@ export async function shareApp(stats = {}) {
  */
 export function isShareSupported() {
   return !!navigator.share;
-}
-
-/**
- * Calculate user tracking stats from entries
- */
-export async function calculateUserStats(entries = []) {
-  if (!entries || entries.length === 0) {
-    return {
-      entryCount: 0,
-      daysTracked: 0,
-      streak: 0,
-      earliestDate: null,
-      latestDate: null
-    };
-  }
-
-  // Get unique dates
-  const uniqueDates = new Set(entries.map(e => e.localDate)).size;
-
-  // Sort entries by localDate to calculate streak
-  const sortedEntries = [...entries].sort((a, b) => 
-    new Date(a.localDate) - new Date(b.localDate)
-  );
-
-  // Calculate current streak (consecutive days from today backwards)
-  let streak = 0;
-  let currentDate = new Date();
-  currentDate.setUTCHours(0, 0, 0, 0);
-
-  for (let i = sortedEntries.length - 1; i >= 0; i--) {
-    const entryDate = new Date(sortedEntries[i].localDate + 'T00:00:00Z');
-    
-    // Check if this entry is today or consecutive with the current streak
-    const daysDiff = Math.floor((currentDate - entryDate) / (1000 * 60 * 60 * 24));
-    
-    if (daysDiff === 0 || daysDiff === streak) {
-      streak++;
-      currentDate.setUTCDate(currentDate.getUTCDate() - 1);
-    } else {
-      break; // Streak is broken
-    }
-  }
-
-  return {
-    entryCount: entries.length,
-    daysTracked: uniqueDates,
-    streak: streak,
-    earliestDate: sortedEntries[0]?.localDate,
-    latestDate: sortedEntries[sortedEntries.length - 1]?.localDate
-  };
 }

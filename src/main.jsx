@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthContextProvider } from "./AuthContext";
+import { StatsProvider } from "./StatsContext";
 import "./index.css";
 
 // Register PWA service worker with iOS-specific update handling
@@ -44,9 +45,11 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
     <AuthContextProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <StatsProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </StatsProvider>
     </AuthContextProvider>
   </React.StrictMode>
 );

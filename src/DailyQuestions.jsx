@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthContext } from "./AuthContext";
+import { useStats } from "./StatsContext";
 import { encryptEntry, decryptEntry } from "./lib/encryption";
 import "./DailyQuestions.css";
 
@@ -10,6 +11,7 @@ export default function DailyQuestions() {
   const { state } = useLocation();
   const feeling = state?.feeling || "😐";
   const { user, getIdToken } = useAuthContext();
+  const { invalidateStats } = useStats();
 
   const todayKey = `entry:${new Date().toISOString().slice(0, 10)}`;
 
@@ -153,7 +155,14 @@ export default function DailyQuestions() {
     const userSub = user.sub;
     const encryptedEntry = await encryptEntry(entry, userSub);
 
-    const token = await getIdToken();
+    let token;
+    try {
+      token = await getIdToken();
+    } catch (tokenError) {
+      console.error('Token error:', tokenError);
+      return alert(`Authentication error: ${tokenError.message}. Please sign in again.`);
+    }
+
     const resp = await fetch(`${import.meta.env.VITE_API_URL}/entries`, {
       method: "POST",
       headers: {
@@ -193,6 +202,9 @@ export default function DailyQuestions() {
     //    you may also emit an event or call a callback to tell it to reload.
     //    For simplicity, if the user reloads or navigates back, the cache is now cleared.
     // ============================
+
+    // Invalidate stats cache to fetch updated stats on next focus
+    invalidateStats();
 
     alert("Saved for today!");
     navigate("/");

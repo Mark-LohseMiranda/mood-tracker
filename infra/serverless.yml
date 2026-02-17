@@ -23,7 +23,6 @@ provider:
           Resource:
             - "arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/MoodEntries"
             - "arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/MoodEntries/index/userIdLocalDateIndex"
-            - "arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/UserStats"
         - Effect: "Allow"
           Action:
             - "s3:PutObject"
@@ -266,18 +265,6 @@ resources:
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
-        BillingMode: PAY_PER_REQUEST
-
-    UserStats:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: UserStats
-        AttributeDefinitions:
-          - AttributeName: userId
-            AttributeType: S
-        KeySchema:
-          - AttributeName: userId
-            KeyType: HASH
         BillingMode: PAY_PER_REQUEST
 
     ProfilePicturesBucket:
